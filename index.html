@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FlipTracker · Wallapop</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0c0b09;--s1:#161410;--s2:#1f1c18;--s3:#28251f;--s4:#332f28;
+  --bd:#3d3830;--acc:#f0a500;--grn:#52c97a;--red:#e8513a;--blu:#5b9cf5;
+  --txt:#ede8de;--t2:#9e9488;--t3:#635d54;
+  --hd:'Syne',sans-serif;--mn:'JetBrains Mono',monospace;--r:10px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--txt);font-family:var(--hd);min-height:100vh;}
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-track{background:var(--s1);}
+::-webkit-scrollbar-thumb{background:var(--bd);border-radius:3px;}
+
+header{display:flex;align-items:center;justify-content:space-between;padding:0 24px;height:56px;background:var(--s1);border-bottom:1px solid var(--bd);position:sticky;top:0;z-index:200;gap:12px;}
+.logo{display:flex;align-items:center;gap:10px;user-select:none;flex-shrink:0;}
+.logo-box{width:30px;height:30px;background:var(--acc);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:15px;}
+.logo-name{font-size:16px;font-weight:800;letter-spacing:-.4px;}
+.logo-name em{color:var(--acc);font-style:normal;}
+nav{display:flex;gap:3px;}
+.tab{background:none;border:1px solid transparent;color:var(--t2);font-family:var(--hd);font-size:12.5px;font-weight:700;padding:7px 14px;border-radius:7px;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:6px;}
+.tab:hover{color:var(--txt);background:var(--s2);}
+.tab.on{color:var(--acc);border-color:rgba(240,165,0,.35);background:rgba(240,165,0,.07);}
+.tab .bdg{background:var(--s3);color:var(--t2);font-size:11px;padding:1px 6px;border-radius:20px;font-family:var(--mn);}
+.tab.on .bdg{background:rgba(240,165,0,.2);color:var(--acc);}
+
+main{padding:22px 24px;max-width:1380px;margin:0 auto;}
+.page{display:none;animation:up .2s ease;}
+.page.on{display:block;}
+@keyframes up{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:20px;}
+.sc{background:var(--s1);border:1px solid var(--bd);border-radius:var(--r);padding:15px 17px;position:relative;overflow:hidden;}
+.sc::after{content:'';position:absolute;top:0;left:0;right:0;height:2px;}
+.sc.g::after{background:var(--grn);}.sc.o::after{background:var(--acc);}.sc.r::after{background:var(--red);}.sc.b::after{background:var(--blu);}
+.sc-lbl{font-size:10px;color:var(--t3);font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;}
+.sc-val{font-size:22px;font-weight:800;font-family:var(--mn);}
+.sc.g .sc-val{color:var(--grn);}.sc.o .sc-val{color:var(--acc);}.sc.r .sc-val{color:var(--red);}.sc.b .sc-val{color:var(--blu);}
+.sc-sub{font-size:11px;color:var(--t3);margin-top:3px;font-family:var(--mn);}
+
+.card{background:var(--s1);border:1px solid var(--bd);border-radius:var(--r);overflow:hidden;margin-bottom:18px;}
+.card-head{display:flex;align-items:center;justify-content:space-between;padding:13px 17px;border-bottom:1px solid var(--bd);background:var(--s2);}
+.card-title{font-size:13px;font-weight:700;}
+.card-body{padding:17px;}
+
+.fg{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:11px;}
+.f{display:flex;flex-direction:column;gap:5px;}
+.f.w2{grid-column:span 2;}.f.full{grid-column:1/-1;}
+label{font-size:10.5px;color:var(--t2);font-weight:700;letter-spacing:.8px;text-transform:uppercase;}
+input,select,textarea{background:var(--s3);border:1px solid var(--bd);border-radius:7px;color:var(--txt);font-family:var(--hd);font-size:13.5px;padding:8px 11px;width:100%;transition:border .15s;outline:none;}
+input:focus,select:focus,textarea:focus{border-color:var(--acc);background:var(--s4);}
+input[type=number]{font-family:var(--mn);}
+select option{background:var(--s3);}
+textarea{resize:vertical;min-height:60px;}
+.calc-row{display:flex;align-items:center;gap:8px;background:var(--s3);border:1px solid var(--bd);border-radius:7px;padding:8px 11px;}
+.calc-row .lbl{font-size:11px;color:var(--t3);}
+.calc-row .res{font-family:var(--mn);font-size:14px;font-weight:600;margin-left:auto;}
+
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:7px;border:none;font-family:var(--hd);font-size:13px;font-weight:700;cursor:pointer;transition:all .15s;white-space:nowrap;}
+.btn-acc{background:var(--acc);color:#0c0b09;}.btn-acc:hover{background:#f5b430;}
+.btn-ghost{background:var(--s2);color:var(--t2);border:1px solid var(--bd);}.btn-ghost:hover{color:var(--txt);border-color:var(--t3);}
+.btn-red{background:rgba(232,81,58,.15);color:var(--red);border:1px solid rgba(232,81,58,.25);}.btn-red:hover{background:rgba(232,81,58,.25);}
+.btn-grn{background:rgba(82,201,122,.15);color:var(--grn);border:1px solid rgba(82,201,122,.25);}.btn-grn:hover{background:rgba(82,201,122,.25);}
+.btn-sm{padding:5px 9px;font-size:11.5px;}.btn-ico{padding:6px;}
+
+/* repuestos list inside form */
+.rep-list{display:flex;flex-direction:column;gap:7px;margin-bottom:8px;}
+.rep-row{display:grid;grid-template-columns:1fr 80px auto;gap:7px;align-items:center;background:var(--s3);border:1px solid var(--bd);border-radius:7px;padding:7px 10px;}
+.rep-row select,.rep-row input{background:transparent;border:none;padding:2px 4px;font-size:13px;}
+.rep-row select:focus,.rep-row input:focus{border:none;background:transparent;}
+.rep-row .rep-precio{font-family:var(--mn);font-size:12px;color:var(--acc);padding:2px 6px;background:rgba(240,165,0,.1);border-radius:4px;white-space:nowrap;}
+.rep-row .del-rep{background:none;border:none;color:var(--t3);cursor:pointer;font-size:14px;padding:2px 4px;border-radius:4px;transition:color .15s;flex-shrink:0;}
+.rep-row .del-rep:hover{color:var(--red);}
+.rep-add-row{display:grid;grid-template-columns:1fr 80px auto;gap:7px;align-items:center;}
+
+.tw{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;font-size:13px;}
+thead th{background:var(--s2);padding:9px 11px;text-align:left;font-size:10px;color:var(--t3);font-weight:700;letter-spacing:.9px;text-transform:uppercase;border-bottom:1px solid var(--bd);white-space:nowrap;}
+tbody tr{border-bottom:1px solid rgba(61,56,48,.5);transition:background .12s;}
+tbody tr:last-child{border-bottom:none;}
+tbody tr:hover{background:var(--s2);}
+tbody td{padding:9px 11px;vertical-align:middle;}
+.mn{font-family:var(--mn);font-size:12.5px;}
+.cg{color:var(--grn);font-family:var(--mn);font-weight:600;}
+.cr{color:var(--red);font-family:var(--mn);font-weight:600;}
+.co{color:var(--acc);font-family:var(--mn);font-weight:600;}
+.pill{display:inline-flex;align-items:center;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700;}
+.pill-g{background:rgba(82,201,122,.12);color:var(--grn);}
+.pill-o{background:rgba(240,165,0,.12);color:var(--acc);}
+.pill-b{background:rgba(91,156,245,.12);color:var(--blu);}
+.empty{text-align:center;padding:44px 20px;color:var(--t3);}
+.empty .ico{font-size:34px;margin-bottom:8px;}
+.empty p{font-size:13px;}
+
+.pw{background:var(--s3);border-radius:20px;height:7px;overflow:hidden;}
+.pb{height:100%;border-radius:20px;transition:width .5s ease;}
+
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:500;display:none;align-items:center;justify-content:center;padding:20px;}
+.overlay.on{display:flex;}
+.modal{background:var(--s1);border:1px solid var(--bd);border-radius:14px;width:100%;max-width:580px;max-height:92vh;overflow-y:auto;animation:up .2s ease;}
+.mh{display:flex;align-items:center;justify-content:space-between;padding:15px 19px;border-bottom:1px solid var(--bd);position:sticky;top:0;background:var(--s1);z-index:2;}
+.mt{font-size:15px;font-weight:800;}
+.mb{padding:19px;}
+.mf{display:flex;gap:9px;justify-content:flex-end;padding:15px 19px;border-top:1px solid var(--bd);}
+.xbtn{background:none;border:none;color:var(--t2);font-size:20px;cursor:pointer;padding:2px 6px;border-radius:4px;}
+.xbtn:hover{color:var(--txt);}
+
+#toast{position:fixed;bottom:22px;right:22px;z-index:999;background:var(--s2);border:1px solid var(--bd);border-radius:8px;padding:11px 17px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:7px;transform:translateY(70px);opacity:0;transition:all .25s ease;pointer-events:none;max-width:300px;}
+#toast.show{transform:translateY(0);opacity:1;}
+#toast.ok{border-color:rgba(82,201,122,.4);color:var(--grn);}
+#toast.err{border-color:rgba(232,81,58,.4);color:var(--red);}
+
+.sg{display:grid;grid-template-columns:1fr 1fr;gap:15px;}
+@media(max-width:680px){.sg{grid-template-columns:1fr;}.stats{grid-template-columns:1fr 1fr;}.f.w2{grid-column:span 1;}}
+.bi{margin-bottom:13px;}
+.bh{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px;}
+.bl{font-size:12.5px;font-weight:600;}
+.bv{font-family:var(--mn);font-size:11.5px;color:var(--t2);}
+.rn{width:24px;height:24px;border-radius:50%;background:var(--s3);display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;font-family:var(--mn);}
+.rn.gold{background:rgba(240,165,0,.2);color:var(--acc);}
+.rn.silver{background:rgba(91,156,245,.2);color:var(--blu);}
+.rn.bronze{background:rgba(82,201,122,.15);color:var(--grn);}
+
+/* chips para repuestos en tabla */
+.rep-chips{display:flex;flex-wrap:wrap;gap:4px;}
+.rep-chip{background:rgba(240,165,0,.1);color:var(--acc);border:1px solid rgba(240,165,0,.2);border-radius:4px;font-size:10.5px;padding:2px 6px;font-family:var(--mn);white-space:nowrap;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-box">🔄</div>
+    <div class="logo-name">Flip<em>Tracker</em></div>
+  </div>
+  <nav>
+    <button class="tab on" onclick="showPage('ventas',this)">📦 Ventas <span class="bdg" id="bv">0</span></button>
+    <button class="tab" onclick="showPage('inventario',this)">🗄️ Inventario <span class="bdg" id="bi">0</span></button>
+    <button class="tab" onclick="showPage('resumen',this)">📊 Resumen</button>
+    <button class="btn btn-acc" style="margin-left:8px;font-size:12px;padding:7px 13px;" onclick="document.getElementById('xlsxInput').click()">⬆ Excel</button>
+    <input type="file" id="xlsxInput" accept=".xlsx,.xls" style="display:none" onchange="importExcel(this)">
+  </nav>
+</header>
+
+<main>
+
+<!-- ── VENTAS ── -->
+<div id="page-ventas" class="page on">
+  <div class="stats" id="vs"></div>
+
+  <div class="card">
+    <div class="card-head"><span class="card-title">➕ Añadir producto</span></div>
+    <div class="card-body">
+      <div class="fg">
+        <div class="f w2"><label>Nombre del producto</label><input type="text" id="vn" placeholder="Ej: iPhone 12, PS4 Pro…"></div>
+        <div class="f"><label>Precio compra (€)</label><input type="number" id="vc" min="0" step="0.01" placeholder="0.00" oninput="calcB()"></div>
+        <div class="f"><label>Precio venta (€)</label><input type="number" id="vv" min="0" step="0.01" placeholder="0.00" oninput="calcB()"></div>
+        <div class="f"><label>Coste repuestos (€)</label>
+          <div class="calc-row"><span class="lbl">Suma automática</span><span class="res" id="vrc-total">0.00 €</span></div>
+        </div>
+        <div class="f"><label>Beneficio neto</label>
+          <div class="calc-row"><span class="lbl">Venta − Compra − Rep.</span><span class="res" id="vbp">—</span></div>
+        </div>
+        <div class="f"><label>Estado</label>
+          <select id="vest">
+            <option value="en_stock">📦 En stock</option>
+            <option value="vendido">✅ Vendido</option>
+            <option value="reparando">🔧 Reparando</option>
+          </select>
+        </div>
+        <div class="f full">
+          <label>Repuestos usados del inventario</label>
+          <div class="rep-list" id="v-rep-list"></div>
+          <div class="rep-add-row">
+            <select id="v-rep-sel"><option value="">— Seleccionar repuesto —</option></select>
+            <input type="number" id="v-rep-qty" min="1" step="1" value="1" placeholder="Cant.">
+            <button class="btn btn-grn btn-sm" onclick="addRepRow('v')">＋ Añadir</button>
+          </div>
+        </div>
+        <div class="f full"><label>Observaciones</label><textarea id="vob" placeholder="Notas…"></textarea></div>
+      </div>
+      <div style="display:flex;gap:9px;margin-top:15px;">
+        <button class="btn btn-acc" onclick="addVenta()">✚ Añadir producto</button>
+        <button class="btn btn-ghost" onclick="clearVF()">✕ Limpiar</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <span class="card-title">📋 Historial de productos</span>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <input type="text" id="vsearch" placeholder="Buscar…" style="width:150px;padding:5px 10px;font-size:12px;" oninput="renderV()">
+        <button class="btn btn-ghost btn-sm" onclick="exportCSV()">⬇ CSV</button>
+      </div>
+    </div>
+    <div class="tw">
+      <table>
+        <thead>
+          <tr><th>#</th><th>Producto</th><th>Compra</th><th>Repuestos</th><th>Coste rep.</th><th>Venta</th><th>Beneficio</th><th>Margen</th><th>Estado</th><th>Observaciones</th><th></th></tr>
+        </thead>
+        <tbody id="vtb"></tbody>
+      </table>
+      <div id="ve" class="empty" style="display:none"><div class="ico">📦</div><p>Sin productos aún.<br>¡Añade tu primera compraventa!</p></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── INVENTARIO ── -->
+<div id="page-inventario" class="page">
+  <div class="card">
+    <div class="card-head"><span class="card-title">➕ Añadir repuesto</span></div>
+    <div class="card-body">
+      <div class="fg">
+        <div class="f w2"><label>Nombre del repuesto</label><input type="text" id="in" placeholder="Ej: Pantalla iPhone 12, Batería PS4…"></div>
+        <div class="f"><label>Precio por unidad (€)</label><input type="number" id="ip" min="0" step="0.01" placeholder="0.00"></div>
+        <div class="f"><label>Stock inicial</label><input type="number" id="ist" min="0" step="1" placeholder="0"></div>
+        <div class="f full"><label>Notas</label><input type="text" id="ino" placeholder="Proveedor, referencia…"></div>
+      </div>
+      <div style="margin-top:13px;"><button class="btn btn-acc" onclick="addRep()">✚ Añadir repuesto</button></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-head"><span class="card-title">🗄️ Inventario de repuestos</span></div>
+    <div class="tw">
+      <table>
+        <thead><tr><th>Repuesto</th><th>€/ud</th><th>Stock inicial</th><th>Usados</th><th>Stock actual</th><th>Valor stock</th><th>Notas</th><th></th></tr></thead>
+        <tbody id="itb"></tbody>
+      </table>
+      <div id="ie" class="empty" style="display:none"><div class="ico">🗄️</div><p>Inventario vacío.</p></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── RESUMEN ── -->
+<div id="page-resumen" class="page">
+  <div class="stats" id="rs"></div>
+  <div class="sg">
+    <div class="card"><div class="card-head"><span class="card-title">🏆 Top por beneficio</span></div><div class="card-body" id="rtop"></div></div>
+    <div class="card"><div class="card-head"><span class="card-title">📊 Distribución</span></div><div class="card-body" id="rdist"></div></div>
+    <div class="card" style="grid-column:1/-1"><div class="card-head"><span class="card-title">📈 Análisis financiero</span></div><div class="card-body" id="rfin"></div></div>
+  </div>
+</div>
+
+</main>
+
+<!-- MODAL EDITAR VENTA -->
+<div class="overlay" id="mv">
+  <div class="modal">
+    <div class="mh"><span class="mt">✏️ Editar producto</span><button class="xbtn" onclick="closeM('mv')">×</button></div>
+    <div class="mb">
+      <input type="hidden" id="eid">
+      <div class="fg">
+        <div class="f w2"><label>Nombre</label><input type="text" id="en"></div>
+        <div class="f"><label>Precio compra (€)</label><input type="number" id="ec" step="0.01" oninput="calcEB()"></div>
+        <div class="f"><label>Precio venta (€)</label><input type="number" id="ev" step="0.01" oninput="calcEB()"></div>
+        <div class="f"><label>Coste repuestos (€)</label>
+          <div class="calc-row"><span class="lbl">Suma automática</span><span class="res" id="erc-total">0.00 €</span></div>
+        </div>
+        <div class="f"><label>Beneficio neto</label>
+          <div class="calc-row"><span class="lbl">Calculado</span><span class="res" id="ebp">—</span></div>
+        </div>
+        <div class="f"><label>Estado</label>
+          <select id="eest">
+            <option value="en_stock">📦 En stock</option>
+            <option value="vendido">✅ Vendido</option>
+            <option value="reparando">🔧 Reparando</option>
+          </select>
+        </div>
+        <div class="f full">
+          <label>Repuestos usados del inventario</label>
+          <div class="rep-list" id="e-rep-list"></div>
+          <div class="rep-add-row">
+            <select id="e-rep-sel"><option value="">— Seleccionar repuesto —</option></select>
+            <input type="number" id="e-rep-qty" min="1" step="1" value="1" placeholder="Cant.">
+            <button class="btn btn-grn btn-sm" onclick="addRepRow('e')">＋ Añadir</button>
+          </div>
+        </div>
+        <div class="f full"><label>Observaciones</label><textarea id="eob"></textarea></div>
+      </div>
+    </div>
+    <div class="mf">
+      <button class="btn btn-ghost" onclick="closeM('mv')">Cancelar</button>
+      <button class="btn btn-acc" onclick="saveEV()">💾 Guardar cambios</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL EDITAR REPUESTO -->
+<div class="overlay" id="mi">
+  <div class="modal">
+    <div class="mh"><span class="mt">✏️ Editar repuesto</span><button class="xbtn" onclick="closeM('mi')">×</button></div>
+    <div class="mb">
+      <input type="hidden" id="eiid">
+      <div class="fg">
+        <div class="f w2"><label>Nombre</label><input type="text" id="ein"></div>
+        <div class="f"><label>€/unidad</label><input type="number" id="eip" step="0.01"></div>
+        <div class="f"><label>Stock inicial</label><input type="number" id="eist" step="1"></div>
+        <div class="f full"><label>Notas</label><input type="text" id="eino"></div>
+      </div>
+    </div>
+    <div class="mf">
+      <button class="btn btn-ghost" onclick="closeM('mi')">Cancelar</button>
+      <button class="btn btn-acc" onclick="saveER()">💾 Guardar</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════
+//  DATA
+// ══════════════════════════════════════════
+let V = JSON.parse(localStorage.getItem('ft_v')||'[]');
+let I = JSON.parse(localStorage.getItem('ft_i')||'[]');
+
+// Migración: productos antiguos con repInvId → nuevo formato repuestos[]
+V.forEach(v => {
+  if (!v.repuestos) {
+    v.repuestos = [];
+    if (v.repInvId) {
+      v.repuestos.push({ id: v.repInvId, qty: 1 });
+    }
+    delete v.repInvId;
+  }
+});
+
+function save(){localStorage.setItem('ft_v',JSON.stringify(V));localStorage.setItem('ft_i',JSON.stringify(I));}
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7);}
+
+// ══════════════════════════════════════════
+//  NAV
+// ══════════════════════════════════════════
+function showPage(n,btn){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
+  document.querySelectorAll('.tab').forEach(b=>b.classList.remove('on'));
+  document.getElementById('page-'+n).classList.add('on');
+  btn.classList.add('on');
+  if(n==='resumen')renderR();
+  if(n==='ventas')renderV();
+  if(n==='inventario')renderI();
+}
+
+// ══════════════════════════════════════════
+//  REPUESTO ROWS (lista dinámica en formulario)
+//  ctx = 'v' (añadir) | 'e' (editar)
+//  pendingReps[ctx] = [{id, qty}]
+// ══════════════════════════════════════════
+const pendingReps = { v: [], e: [] };
+
+function repCostTotal(reps){
+  return reps.reduce((s, r) => {
+    const inv = I.find(x => x.id === r.id);
+    return s + (inv ? inv.precio * r.qty : 0);
+  }, 0);
+}
+
+function renderRepList(ctx){
+  const list = document.getElementById(ctx+'-rep-list');
+  const reps = pendingReps[ctx];
+  list.innerHTML = reps.map((r, i) => {
+    const inv = I.find(x => x.id === r.id);
+    const nombre = inv ? inv.nombre : '?';
+    const coste = inv ? (inv.precio * r.qty).toFixed(2) : '0.00';
+    return `<div class="rep-row">
+      <span style="font-size:13px;font-weight:600">${esc(nombre)}</span>
+      <span style="font-family:var(--mn);font-size:12px;color:var(--t2)">×${r.qty}</span>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <span class="rep-precio">${coste} €</span>
+        <button class="del-rep" onclick="removeRepRow('${ctx}',${i})" title="Quitar">✕</button>
+      </div>
+    </div>`;
+  }).join('');
+  updateRepTotals(ctx);
+}
+
+function updateRepTotals(ctx){
+  const total = repCostTotal(pendingReps[ctx]);
+  const totalEl = document.getElementById(ctx==='v'?'vrc-total':'erc-total');
+  if(totalEl) totalEl.textContent = total.toFixed(2)+' €';
+  if(ctx==='v') calcB(); else calcEB();
+}
+
+function addRepRow(ctx){
+  const selId = ctx+'-rep-sel';
+  const qtyId = ctx+'-rep-qty';
+  const repId = document.getElementById(selId).value;
+  const qty   = parseInt(document.getElementById(qtyId).value)||1;
+  if(!repId){ toast('Selecciona un repuesto','err'); return; }
+  const inv = I.find(r=>r.id===repId);
+  if(!inv){ toast('Repuesto no encontrado','err'); return; }
+
+  // comprobar stock disponible (stock actual menos lo ya pendiente en esta sesión)
+  const yaPendiente = pendingReps[ctx].filter(r=>r.id===repId).reduce((s,r)=>s+r.qty,0);
+  if(inv.stockActual - yaPendiente < qty){
+    toast(`Stock insuficiente (disponible: ${inv.stockActual - yaPendiente})`, 'err'); return;
+  }
+
+  pendingReps[ctx].push({ id: repId, qty });
+  document.getElementById(selId).value = '';
+  document.getElementById(qtyId).value = 1;
+  renderRepList(ctx);
+}
+
+function removeRepRow(ctx, idx){
+  pendingReps[ctx].splice(idx, 1);
+  renderRepList(ctx);
+}
+
+// ══════════════════════════════════════════
+//  CALC
+// ══════════════════════════════════════════
+function pf(id){ return parseFloat(document.getElementById(id).value)||0; }
+function fmt(n){ return (n>=0?'+':'')+n.toFixed(2)+' €'; }
+function fmtN(n){ return n.toFixed(2)+' €'; }
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function calcB(){
+  const c=pf('vc'), rc=repCostTotal(pendingReps.v), v=pf('vv'), b=v-c-rc;
+  const el=document.getElementById('vbp');
+  el.textContent = (c||v||rc) ? fmt(b) : '—';
+  el.style.color = b>0?'var(--grn)':b<0?'var(--red)':'var(--t2)';
+}
+function calcEB(){
+  const c=pf('ec'), rc=repCostTotal(pendingReps.e), v=pf('ev'), b=v-c-rc;
+  const el=document.getElementById('ebp');
+  el.textContent = fmt(b);
+  el.style.color = b>0?'var(--grn)':b<0?'var(--red)':'var(--t2)';
+  const totalEl=document.getElementById('erc-total');
+  if(totalEl) totalEl.textContent = rc.toFixed(2)+' €';
+}
+
+// ══════════════════════════════════════════
+//  VENTAS CRUD
+// ══════════════════════════════════════════
+function addVenta(){
+  const nombre = document.getElementById('vn').value.trim();
+  if(!nombre){ toast('Escribe el nombre del producto','err'); return; }
+  const compra = pf('vc'), venta = pf('vv');
+  const estado = document.getElementById('vest').value;
+  const obs    = document.getElementById('vob').value.trim();
+  const reps   = [...pendingReps.v];
+  const repCoste = repCostTotal(reps);
+  const beneficio = venta - compra - repCoste;
+
+  // descontar stock
+  for(const r of reps){
+    const inv = I.find(x=>x.id===r.id);
+    if(inv){ inv.usados += r.qty; inv.stockActual = inv.stockInicial - inv.usados; }
+  }
+
+  V.push({ id:uid(), nombre, compra, repCoste, venta, beneficio, repuestos:reps, estado, obs, fecha:new Date().toLocaleDateString('es-ES') });
+  save(); clearVF(); renderV(); renderI(); refreshSels();
+  toast('Producto añadido ✓','ok');
+}
+
+function clearVF(){
+  ['vn','vc','vv','vob'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('vest').value='en_stock';
+  pendingReps.v = [];
+  renderRepList('v');
+  const el=document.getElementById('vbp'); el.textContent='—'; el.style.color='';
+}
+
+function delV(id){
+  if(!confirm('¿Eliminar este producto?'))return;
+  const v = V.find(x=>x.id===id);
+  if(v){
+    (v.repuestos||[]).forEach(r=>{
+      const inv=I.find(x=>x.id===r.id);
+      if(inv){ inv.usados=Math.max(0,inv.usados-r.qty); inv.stockActual=inv.stockInicial-inv.usados; }
+    });
+  }
+  V = V.filter(x=>x.id!==id);
+  save(); renderV(); renderI();
+  toast('Eliminado','ok');
+}
+
+function editV(id){
+  const v = V.find(x=>x.id===id); if(!v)return;
+  document.getElementById('eid').value = id;
+  document.getElementById('en').value  = v.nombre;
+  document.getElementById('ec').value  = v.compra;
+  document.getElementById('ev').value  = v.venta;
+  document.getElementById('eob').value = v.obs||'';
+  document.getElementById('eest').value = v.estado;
+  // cargar repuestos actuales en pending
+  pendingReps.e = (v.repuestos||[]).map(r=>({...r}));
+  // populate select
+  const sel = document.getElementById('e-rep-sel');
+  sel.innerHTML = '<option value="">— Seleccionar repuesto —</option>';
+  I.forEach(r=>{
+    const o=document.createElement('option');
+    o.value=r.id; o.textContent=`${r.nombre} (stock: ${r.stockActual})`;
+    sel.appendChild(o);
+  });
+  renderRepList('e');
+  calcEB();
+  openM('mv');
+}
+
+function saveEV(){
+  const id = document.getElementById('eid').value;
+  const v  = V.find(x=>x.id===id); if(!v)return;
+  const newReps = [...pendingReps.e];
+  const oldReps = v.repuestos||[];
+
+  // devolver stock anterior
+  oldReps.forEach(r=>{
+    const inv=I.find(x=>x.id===r.id);
+    if(inv){ inv.usados=Math.max(0,inv.usados-r.qty); inv.stockActual=inv.stockInicial-inv.usados; }
+  });
+
+  // verificar stock nuevo
+  for(const r of newReps){
+    const inv=I.find(x=>x.id===r.id);
+    if(!inv) continue;
+    if(inv.stockActual < r.qty){
+      // revert devuelto
+      oldReps.forEach(r2=>{
+        const inv2=I.find(x=>x.id===r2.id);
+        if(inv2){ inv2.usados+=r2.qty; inv2.stockActual=inv2.stockInicial-inv2.usados; }
+      });
+      toast(`Sin stock suficiente de "${inv.nombre}"`, 'err'); return;
+    }
+    inv.usados += r.qty; inv.stockActual = inv.stockInicial - inv.usados;
+  }
+
+  v.nombre    = document.getElementById('en').value.trim();
+  v.compra    = pf('ec');
+  v.venta     = pf('ev');
+  v.repuestos = newReps;
+  v.repCoste  = repCostTotal(newReps);
+  v.beneficio = v.venta - v.compra - v.repCoste;
+  v.estado    = document.getElementById('eest').value;
+  v.obs       = document.getElementById('eob').value.trim();
+
+  save(); closeM('mv'); renderV(); renderI();
+  toast('Guardado ✓','ok');
+}
+
+// ══════════════════════════════════════════
+//  VENTAS RENDER
+// ══════════════════════════════════════════
+function renderV(){
+  const q  = (document.getElementById('vsearch')?.value||'').toLowerCase();
+  const fl = V.filter(v=>v.nombre.toLowerCase().includes(q));
+  const tb = document.getElementById('vtb');
+  const em = document.getElementById('ve');
+  document.getElementById('bv').textContent = V.length;
+
+  if(!fl.length){ tb.innerHTML=''; em.style.display='block'; }
+  else{
+    em.style.display='none';
+    tb.innerHTML = fl.map((v,i)=>{
+      const reps = v.repuestos||[];
+      const chipsHtml = reps.length
+        ? '<div class="rep-chips">'+reps.map(r=>{
+            const inv=I.find(x=>x.id===r.id);
+            return `<span class="rep-chip">${esc(inv?inv.nombre:'?')}${r.qty>1?' ×'+r.qty:''}</span>`;
+          }).join('')+'</div>'
+        : '<span style="color:var(--t3)">—</span>';
+      const mg  = v.venta>0?((v.beneficio/v.venta)*100).toFixed(1):'0.0';
+      const bc  = v.beneficio>0?'cg':v.beneficio<0?'cr':'';
+      const ep  = {vendido:'<span class="pill pill-g">Vendido</span>',en_stock:'<span class="pill pill-o">En stock</span>',reparando:'<span class="pill pill-b">Reparando</span>'}[v.estado]||'';
+      return `<tr>
+        <td class="mn" style="color:var(--t3)">${i+1}</td>
+        <td><strong>${esc(v.nombre)}</strong><br><span style="font-size:11px;color:var(--t3)">${v.fecha||''}</span></td>
+        <td class="mn">${fmtN(v.compra)}</td>
+        <td style="min-width:120px">${chipsHtml}</td>
+        <td class="mn">${v.repCoste>0?fmtN(v.repCoste):'<span style="color:var(--t3)">—</span>'}</td>
+        <td class="mn">${v.venta>0?fmtN(v.venta):'<span style="color:var(--t3)">—</span>'}</td>
+        <td class="${bc}">${fmt(v.beneficio)}</td>
+        <td class="mn" style="color:var(--t2)">${mg}%</td>
+        <td>${ep}</td>
+        <td style="font-size:12px;color:var(--t2);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(v.obs)}">${esc(v.obs||'—')}</td>
+        <td><div style="display:flex;gap:4px;">
+          <button class="btn btn-ghost btn-sm btn-ico" onclick="editV('${v.id}')">✏️</button>
+          <button class="btn btn-red btn-sm btn-ico" onclick="delV('${v.id}')">🗑</button>
+        </div></td>
+      </tr>`;
+    }).join('');
+  }
+
+  const sold = V.filter(v=>v.estado==='vendido');
+  const ti   = V.reduce((a,v)=>a+v.compra+v.repCoste,0);
+  const tv   = sold.reduce((a,v)=>a+v.venta,0);
+  const tb2  = sold.reduce((a,v)=>a+v.beneficio,0);
+  const roi  = ti>0?((tb2/ti)*100).toFixed(1):'0.0';
+  document.getElementById('vs').innerHTML=`
+    <div class="sc o"><div class="sc-lbl">Total invertido</div><div class="sc-val">${fmtN(ti)}</div><div class="sc-sub">${V.length} producto${V.length!==1?'s':''}</div></div>
+    <div class="sc b"><div class="sc-lbl">Total facturado</div><div class="sc-val">${fmtN(tv)}</div><div class="sc-sub">${sold.length} vendido${sold.length!==1?'s':''}</div></div>
+    <div class="sc ${tb2>=0?'g':'r'}"><div class="sc-lbl">Beneficio neto</div><div class="sc-val">${fmt(tb2)}</div><div class="sc-sub">solo vendidos</div></div>
+    <div class="sc ${parseFloat(roi)>=0?'g':'r'}"><div class="sc-lbl">ROI</div><div class="sc-val">${roi}%</div><div class="sc-sub">retorno inversión</div></div>`;
+}
+
+// ══════════════════════════════════════════
+//  INVENTARIO CRUD
+// ══════════════════════════════════════════
+function addRep(){
+  const nombre = document.getElementById('in').value.trim();
+  if(!nombre){ toast('Escribe el nombre del repuesto','err'); return; }
+  const precio = parseFloat(document.getElementById('ip').value)||0;
+  const stockInicial = parseInt(document.getElementById('ist').value)||0;
+  const notas = document.getElementById('ino').value.trim();
+  I.push({ id:uid(), nombre, precio, stockInicial, usados:0, stockActual:stockInicial, notas });
+  save();
+  ['in','ip','ist','ino'].forEach(id=>document.getElementById(id).value='');
+  renderI(); refreshSels();
+  toast('Repuesto añadido ✓','ok');
+}
+
+function delRep(id){
+  if(V.some(v=>(v.repuestos||[]).some(r=>r.id===id))){ toast('Repuesto en uso, no se puede eliminar','err'); return; }
+  if(!confirm('¿Eliminar este repuesto?'))return;
+  I = I.filter(r=>r.id!==id);
+  save(); renderI(); refreshSels();
+  toast('Eliminado','ok');
+}
+
+function editRep(id){
+  const r=I.find(x=>x.id===id); if(!r)return;
+  document.getElementById('eiid').value=id;
+  document.getElementById('ein').value=r.nombre;
+  document.getElementById('eip').value=r.precio;
+  document.getElementById('eist').value=r.stockInicial;
+  document.getElementById('eino').value=r.notas||'';
+  openM('mi');
+}
+
+function saveER(){
+  const id=document.getElementById('eiid').value;
+  const r=I.find(x=>x.id===id); if(!r)return;
+  r.nombre=document.getElementById('ein').value.trim();
+  r.precio=parseFloat(document.getElementById('eip').value)||0;
+  r.stockInicial=parseInt(document.getElementById('eist').value)||0;
+  r.stockActual=r.stockInicial-r.usados;
+  r.notas=document.getElementById('eino').value.trim();
+  save(); closeM('mi'); renderI(); refreshSels();
+  toast('Guardado ✓','ok');
+}
+
+function renderI(){
+  const tb=document.getElementById('itb'), em=document.getElementById('ie');
+  document.getElementById('bi').textContent=I.length;
+  if(!I.length){ tb.innerHTML=''; em.style.display='block'; return; }
+  em.style.display='none';
+  tb.innerHTML=I.map(r=>{
+    const val=(r.stockActual*r.precio).toFixed(2);
+    const sc=r.stockActual===0?'cr':r.stockActual<=2?'co':'cg';
+    return`<tr>
+      <td><strong>${esc(r.nombre)}</strong></td>
+      <td class="mn">${fmtN(r.precio)}</td>
+      <td class="mn">${r.stockInicial}</td>
+      <td class="mn" style="color:var(--t2)">${r.usados}</td>
+      <td class="${sc}">${r.stockActual} ud${r.stockActual!==1?'s':''}</td>
+      <td class="mn">${val} €</td>
+      <td style="font-size:12px;color:var(--t2)">${esc(r.notas||'—')}</td>
+      <td><div style="display:flex;gap:4px;">
+        <button class="btn btn-ghost btn-sm btn-ico" onclick="editRep('${r.id}')">✏️</button>
+        <button class="btn btn-red btn-sm btn-ico" onclick="delRep('${r.id}')">🗑</button>
+      </div></td>
+    </tr>`;
+  }).join('');
+}
+
+function refreshSels(){
+  ['v-rep-sel','e-rep-sel'].forEach(selId=>{
+    const sel=document.getElementById(selId); if(!sel)return;
+    const cur=sel.value;
+    sel.innerHTML='<option value="">— Seleccionar repuesto —</option>';
+    I.forEach(r=>{
+      const o=document.createElement('option');
+      o.value=r.id; o.textContent=`${r.nombre} (stock: ${r.stockActual})`;
+      if(r.id===cur)o.selected=true;
+      sel.appendChild(o);
+    });
+  });
+}
+
+// ══════════════════════════════════════════
+//  RESUMEN
+// ══════════════════════════════════════════
+function renderR(){
+  const sold=V.filter(v=>v.estado==='vendido');
+  const enStock=V.filter(v=>v.estado==='en_stock');
+  const rep=V.filter(v=>v.estado==='reparando');
+  const ti=V.reduce((a,v)=>a+v.compra+v.repCoste,0);
+  const tv=sold.reduce((a,v)=>a+v.venta,0);
+  const tb=sold.reduce((a,v)=>a+v.beneficio,0);
+  const trc=V.reduce((a,v)=>a+v.repCoste,0);
+  const roi=ti>0?((tb/ti)*100).toFixed(1):'0.0';
+  const avg=sold.length>0?(tb/sold.length).toFixed(2):'0.00';
+  const mg=sold.length>0?(sold.reduce((a,v)=>a+(v.venta>0?v.beneficio/v.venta*100:0),0)/sold.length).toFixed(1):'0.0';
+
+  document.getElementById('rs').innerHTML=`
+    <div class="sc o"><div class="sc-lbl">Capital invertido</div><div class="sc-val">${fmtN(ti)}</div><div class="sc-sub">${V.length} operaciones</div></div>
+    <div class="sc b"><div class="sc-lbl">Facturado</div><div class="sc-val">${fmtN(tv)}</div><div class="sc-sub">${sold.length} vendidos</div></div>
+    <div class="sc ${tb>=0?'g':'r'}"><div class="sc-lbl">Beneficio total</div><div class="sc-val">${fmt(tb)}</div><div class="sc-sub">ROI ${roi}%</div></div>
+    <div class="sc g"><div class="sc-lbl">Beneficio medio</div><div class="sc-val">${parseFloat(avg)>=0?'+':''}${avg} €</div><div class="sc-sub">por venta</div></div>
+    <div class="sc r"><div class="sc-lbl">Coste repuestos</div><div class="sc-val">${fmtN(trc)}</div><div class="sc-sub">${ti>0?((trc/ti)*100).toFixed(1):0}% inversión</div></div>`;
+
+  const top=([...sold].sort((a,b)=>b.beneficio-a.beneficio)).slice(0,5);
+  const mx=top[0]?.beneficio||1;
+  const rc=['gold','silver','bronze'];
+  document.getElementById('rtop').innerHTML=!top.length
+    ?'<p style="color:var(--t3);font-size:13px">No hay productos vendidos aún.</p>'
+    :top.map((v,i)=>`
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:13px;">
+        <span class="rn ${rc[i]||''}">${i+1}</span>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(v.nombre)}</div>
+          <div class="pw" style="margin-top:5px;"><div class="pb" style="width:${Math.max(4,v.beneficio/mx*100).toFixed(0)}%;background:var(--grn)"></div></div>
+        </div>
+        <span style="font-family:var(--mn);font-size:13px;color:var(--grn);white-space:nowrap">${fmt(v.beneficio)}</span>
+      </div>`).join('');
+
+  const tot=V.length||1;
+  document.getElementById('rdist').innerHTML=`
+    <div class="bi"><div class="bh"><span class="bl">✅ Vendidos</span><span class="bv">${sold.length} · ${(sold.length/tot*100).toFixed(0)}%</span></div><div class="pw"><div class="pb" style="width:${(sold.length/tot*100).toFixed(0)}%;background:var(--grn)"></div></div></div>
+    <div class="bi"><div class="bh"><span class="bl">📦 En stock</span><span class="bv">${enStock.length} · ${(enStock.length/tot*100).toFixed(0)}%</span></div><div class="pw"><div class="pb" style="width:${(enStock.length/tot*100).toFixed(0)}%;background:var(--acc)"></div></div></div>
+    <div class="bi"><div class="bh"><span class="bl">🔧 Reparando</span><span class="bv">${rep.length} · ${(rep.length/tot*100).toFixed(0)}%</span></div><div class="pw"><div class="pb" style="width:${(rep.length/tot*100).toFixed(0)}%;background:var(--blu)"></div></div></div>
+    <div style="margin-top:14px;padding-top:13px;border-top:1px solid var(--bd)">
+      <div style="font-size:10px;color:var(--t3);font-weight:700;letter-spacing:.8px;text-transform:uppercase;margin-bottom:9px">Inventario repuestos</div>
+      <div style="display:flex;gap:14px;font-family:var(--mn);font-size:13px;flex-wrap:wrap;">
+        <div><div style="color:var(--t3);font-size:10.5px;margin-bottom:2px">Referencias</div><div style="color:var(--blu)">${I.length}</div></div>
+        <div><div style="color:var(--t3);font-size:10.5px;margin-bottom:2px">Usados</div><div style="color:var(--acc)">${I.reduce((a,r)=>a+r.usados,0)}</div></div>
+        <div><div style="color:var(--t3);font-size:10.5px;margin-bottom:2px">Stock total</div><div style="color:var(--grn)">${I.reduce((a,r)=>a+r.stockActual,0)}</div></div>
+        <div><div style="color:var(--t3);font-size:10.5px;margin-bottom:2px">Valor stock</div><div style="color:var(--grn)">${I.reduce((a,r)=>a+r.stockActual*r.precio,0).toFixed(2)} €</div></div>
+      </div>
+    </div>`;
+
+  document.getElementById('rfin').innerHTML=`
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:16px;">
+      <div><div class="sc-lbl" style="margin-bottom:7px">Margen medio venta</div><div style="font-family:var(--mn);font-size:22px;font-weight:700;color:var(--grn)">${mg}%</div><div style="font-size:11.5px;color:var(--t3);margin-top:3px">Beneficio ÷ precio venta</div></div>
+      <div><div class="sc-lbl" style="margin-bottom:7px">Tasa de éxito</div><div style="font-family:var(--mn);font-size:22px;font-weight:700;color:var(--acc)">${V.length>0?(sold.length/V.length*100).toFixed(0):0}%</div><div style="font-size:11.5px;color:var(--t3);margin-top:3px">${sold.length} de ${V.length} vendidos</div></div>
+      <div><div class="sc-lbl" style="margin-bottom:7px">Inversión media/op.</div><div style="font-family:var(--mn);font-size:22px;font-weight:700;color:var(--blu)">${V.length>0?fmtN(ti/V.length):'0.00 €'}</div><div style="font-size:11.5px;color:var(--t3);margin-top:3px">Compra + repuestos</div></div>
+      <div><div class="sc-lbl" style="margin-bottom:7px">% gasto repuestos</div><div style="font-family:var(--mn);font-size:22px;font-weight:700;color:var(--red)">${ti>0?((trc/ti)*100).toFixed(1):0}%</div><div style="font-size:11.5px;color:var(--t3);margin-top:3px">${fmtN(trc)} total repuestos</div></div>
+    </div>`;
+}
+
+// ══════════════════════════════════════════
+//  EXPORT CSV
+// ══════════════════════════════════════════
+function exportCSV(){
+  const h=['Producto','Fecha','Compra €','Repuestos','Coste rep €','Venta €','Beneficio €','Margen %','Estado','Observaciones'];
+  const rows=V.map(v=>{
+    const repsStr=(v.repuestos||[]).map(r=>{
+      const inv=I.find(x=>x.id===r.id);
+      return inv?`${inv.nombre}×${r.qty}`:'?';
+    }).join(' | ');
+    const mg=v.venta>0?((v.beneficio/v.venta)*100).toFixed(1):'0';
+    return[v.nombre,v.fecha||'',v.compra,repsStr,v.repCoste,v.venta,v.beneficio,mg,v.estado,v.obs||'']
+      .map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',');
+  });
+  const csv=[h.join(','),...rows].join('\n');
+  const a=document.createElement('a');
+  a.href='data:text/csv;charset=utf-8,'+encodeURIComponent('\uFEFF'+csv);
+  a.download='fliptracker_ventas.csv'; a.click();
+  toast('CSV exportado ✓','ok');
+}
+
+// ══════════════════════════════════════════
+//  IMPORT EXCEL
+// ══════════════════════════════════════════
+function importExcel(input){
+  const file=input.files[0]; if(!file)return;
+  input.value='';
+  const reader=new FileReader();
+  reader.onload=function(e){
+    try{
+      const data=new Uint8Array(e.target.result);
+      const wb=XLSX.read(data,{type:'array'});
+      let ventasImport=[],invImport=[];
+
+      const ventasSheet=wb.SheetNames.find(n=>{
+        const json=XLSX.utils.sheet_to_json(wb.Sheets[n],{header:1,defval:''});
+        return json[0]&&json[0].some(h=>String(h).toLowerCase().includes('producto'));
+      })||wb.SheetNames[0];
+
+      const rowsV=XLSX.utils.sheet_to_json(wb.Sheets[ventasSheet],{header:1,defval:''});
+      if(rowsV.length>1){
+        const hdr=rowsV[0].map(h=>String(h).toLowerCase().trim());
+        const ci=k=>hdr.findIndex(h=>h.includes(k));
+        const iN=ci('producto'),iC=ci('compra'),iRN=ci('repuesto usado'),
+              iRC=ci('reparac')!==-1?ci('reparac'):ci('coste rep'),
+              iV=ci('venta'),iE=ci('estado'),iO=ci('observ');
+        for(let r=1;r<rowsV.length;r++){
+          const row=rowsV[r];
+          const nombre=String(row[iN]||'').trim(); if(!nombre)continue;
+          const compra=parseFloat(row[iC])||0, repCoste=parseFloat(row[iRC])||0, venta=parseFloat(row[iV])||0;
+          const beneficio=venta-compra-repCoste;
+          const rawE=String(row[iE]||'').toLowerCase();
+          let estado='en_stock';
+          if(rawE.includes('ganancia')||rawE.includes('vendido'))estado='vendido';
+          else if(rawE.includes('pérdida')||rawE.includes('perdida'))estado='vendido';
+          else if(rawE.includes('repar'))estado='reparando';
+          const repNom=iRN!==-1?String(row[iRN]||'').trim():'';
+          const obs=iO!==-1?String(row[iO]||'').trim():'';
+          ventasImport.push({id:uid(),nombre,compra,repCoste,venta,beneficio,repNombreExcel:repNom,repuestos:[],estado,obs,fecha:new Date().toLocaleDateString('es-ES')});
+        }
+      }
+
+      const invSheet=wb.SheetNames.find(n=>{
+        const json=XLSX.utils.sheet_to_json(wb.Sheets[n],{header:1,defval:''});
+        return json[0]&&json[0].some(h=>String(h).toLowerCase().includes('repuesto')||String(h).toLowerCase().includes('stock'));
+      });
+      if(invSheet){
+        const rowsI=XLSX.utils.sheet_to_json(wb.Sheets[invSheet],{header:1,defval:''});
+        if(rowsI.length>1){
+          const hdr=rowsI[0].map(h=>String(h).toLowerCase().trim());
+          const ci=k=>hdr.findIndex(h=>h.includes(k));
+          const iN2=ci('repuesto'),iSt=ci('inicial')!==-1?ci('inicial'):ci('stock'),
+                iUs=ci('usado'),iP=ci('precio')!==-1?ci('precio'):ci('unidad');
+          for(let r=1;r<rowsI.length;r++){
+            const row=rowsI[r];
+            const nombre=String(row[iN2]||'').trim(); if(!nombre)continue;
+            const stockInicial=parseInt(row[iSt])||0, usados=parseInt(row[iUs])||0, precio=parseFloat(row[iP])||0;
+            invImport.push({id:uid(),nombre,precio,stockInicial,usados,stockActual:stockInicial-usados,notas:''});
+          }
+        }
+      }
+
+      // vincular repuesto nombre → id y crear repuestos[]
+      ventasImport.forEach(v=>{
+        if(v.repNombreExcel){
+          const rep=invImport.find(r=>r.nombre.toLowerCase()===v.repNombreExcel.toLowerCase());
+          if(rep) v.repuestos=[{id:rep.id,qty:1}];
+        }
+        delete v.repNombreExcel;
+      });
+
+      if(!ventasImport.length&&!invImport.length){ toast('No se encontraron datos válidos','err'); return; }
+
+      const resp=confirm(`Se importarán:\n• ${ventasImport.length} producto(s)\n• ${invImport.length} repuesto(s)\n\n¿Añadir a los datos existentes?\nCancelar = reemplazar todo`);
+      if(!resp){
+        if(!confirm('¿Reemplazar TODO?\nAceptar = sí | Cancelar = abortar'))return;
+        V=[]; I=[];
+      }
+      invImport.forEach(r=>I.push(r));
+      ventasImport.forEach(v=>V.push(v));
+      save(); renderV(); renderI(); refreshSels();
+      toast(`Importados ${ventasImport.length} productos y ${invImport.length} repuestos ✓`,'ok');
+    }catch(err){ console.error(err); toast('Error: '+err.message,'err'); }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+// ══════════════════════════════════════════
+//  MODALS / TOAST
+// ══════════════════════════════════════════
+function openM(id){ document.getElementById(id).classList.add('on'); }
+function closeM(id){ document.getElementById(id).classList.remove('on'); }
+document.querySelectorAll('.overlay').forEach(ov=>ov.addEventListener('click',e=>{if(e.target===ov)ov.classList.remove('on');}));
+
+let tt;
+function toast(msg,type='ok'){
+  const t=document.getElementById('toast');
+  t.textContent=(type==='ok'?'✓ ':'✕ ')+msg;
+  t.className='show '+type;
+  clearTimeout(tt);
+  tt=setTimeout(()=>{t.className='';},2800);
+}
+
+// ══════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════
+renderV(); renderI(); refreshSels();
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</body>
+</html>
