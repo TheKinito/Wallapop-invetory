@@ -138,6 +138,19 @@ tbody td{padding:9px 11px;vertical-align:middle;}
 .rn.bronze{background:rgba(82,201,122,.15);color:var(--grn);}
 .rep-chips{display:flex;flex-wrap:wrap;gap:4px;}
 .rep-chip{background:rgba(240,165,0,.1);color:var(--acc);border:1px solid rgba(240,165,0,.2);border-radius:4px;font-size:10.5px;padding:2px 6px;font-family:var(--mn);white-space:nowrap;}
+.alert-row td{background:rgba(232,81,58,.07)!important;}
+.alert-row:hover td{background:rgba(232,81,58,.13)!important;}
+.qty-low{color:var(--red);font-weight:700;font-family:var(--mn);}
+.qty-ok{color:var(--grn);font-family:var(--mn);}
+.ubadge{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-family:var(--mn);padding:2px 7px;border-radius:4px;background:rgba(232,81,58,.15);color:var(--red);border:1px solid rgba(232,81,58,.3);}
+.ubadge.ok{background:rgba(82,201,122,.1);color:var(--grn);border-color:rgba(82,201,122,.25);}
+.pedido-row{display:flex;align-items:center;gap:12px;padding:13px 17px;border-bottom:1px solid var(--bd);transition:background .12s;}
+.pedido-row:last-child{border-bottom:none;}
+.pedido-row:hover{background:var(--s2);}
+.pedido-nombre{font-size:13px;font-weight:700;flex:1;}
+.pedido-qty{font-family:var(--mn);font-size:13px;color:var(--acc);background:rgba(240,165,0,.1);border:1px solid rgba(240,165,0,.2);border-radius:5px;padding:3px 9px;}
+.pedido-fecha{font-size:11px;color:var(--t3);font-family:var(--mn);white-space:nowrap;}
+.alert-banner{display:flex;align-items:center;gap:10px;background:rgba(232,81,58,.1);border:1px solid rgba(232,81,58,.3);border-radius:8px;padding:12px 16px;margin-bottom:18px;font-size:13px;font-weight:600;color:var(--red);}
 </style>
 </head>
 <body>
@@ -161,6 +174,8 @@ tbody td{padding:9px 11px;vertical-align:middle;}
   <nav>
     <button class="tab on" onclick="showPage('ventas',this)">📦 Ventas <span class="bdg" id="bv">0</span></button>
     <button class="tab" onclick="showPage('inventario',this)">🗄️ Inventario <span class="bdg" id="bi">0</span></button>
+    <button class="tab" onclick="showPage('taller',this)">🔧 Taller <span class="bdg" id="bt">0</span></button>
+    <button class="tab" onclick="showPage('pedidos',this)">🛒 Pedidos <span class="bdg" id="bp">0</span></button>
     <button class="tab" onclick="showPage('resumen',this)">📊 Resumen</button>
     <button class="btn btn-acc" style="margin-left:8px;font-size:12px;padding:7px 13px;" onclick="document.getElementById('xlsxInput').click()">⬆ Excel</button>
     <input type="file" id="xlsxInput" accept=".xlsx,.xls" style="display:none" onchange="importExcel(this)">
@@ -263,7 +278,89 @@ tbody td{padding:9px 11px;vertical-align:middle;}
   </div>
 </div>
 
+<!-- TALLER -->
+<div id="page-taller" class="page">
+  <div id="taller-alert" style="display:none" class="alert-banner">
+    <span class="ico">⚠️</span>
+    <span id="taller-alert-txt"></span>
+  </div>
+  <div class="card">
+    <div class="card-head"><span class="card-title">➕ Añadir componente</span></div>
+    <div class="card-body">
+      <div class="fg">
+        <div class="f w2"><label>Nombre del componente</label><input type="text" id="tc-nombre" placeholder="Ej: M92T36, BQ24193, Joystick Hall Effect…"></div>
+        <div class="f"><label>Cantidad inicial</label><input type="number" id="tc-qty" min="0" step="1" placeholder="0"></div>
+        <div class="f"><label>Umbral mínimo (alerta)</label><input type="number" id="tc-umbral" min="0" step="1" placeholder="5"></div>
+      </div>
+      <div style="margin-top:13px;"><button class="btn btn-acc" id="btn-add-tc" onclick="addComponente()">✚ Añadir componente</button></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-head">
+      <span class="card-title">🔧 Inventario de Taller</span>
+      <input type="text" id="tc-search" placeholder="Buscar…" style="width:160px;padding:5px 10px;font-size:12px;" oninput="renderTaller()">
+    </div>
+    <div class="tw">
+      <table>
+        <thead><tr><th>Componente</th><th>Cantidad</th><th>Umbral mínimo</th><th>Estado</th><th>Ajustar stock</th><th></th></tr></thead>
+        <tbody id="tc-tbody"></tbody>
+      </table>
+      <div id="tc-empty" class="empty" style="display:none"><div class="ico">🔧</div><p>Sin componentes aún.</p></div>
+    </div>
+  </div>
+</div>
+
+<!-- PEDIDOS -->
+<div id="page-pedidos" class="page">
+  <div class="card">
+    <div class="card-head">
+      <span class="card-title">🛒 Pedidos Pendientes</span>
+      <button class="btn btn-ghost btn-sm" onclick="loadPedidos()">↻ Actualizar</button>
+    </div>
+    <div id="pedidos-list">
+      <div class="empty"><div class="ico">🛒</div><p>Cargando pedidos…</p></div>
+    </div>
+  </div>
+  <div class="card" style="border-color:rgba(240,165,0,.2)">
+    <div class="card-head" style="background:rgba(240,165,0,.05)"><span class="card-title">➕ Añadir pedido manualmente</span></div>
+    <div class="card-body">
+      <div class="fg">
+        <div class="f w2"><label>Nombre del componente</label><input type="text" id="np-nombre" placeholder="Ej: M92T36, Joystick…"></div>
+        <div class="f"><label>Cantidad pedida</label><input type="number" id="np-qty" min="1" step="1" placeholder="1"></div>
+        <div class="f"><label>Vincular componente (opcional)</label>
+          <select id="np-comp"><option value="">— Sin vincular —</option></select>
+        </div>
+      </div>
+      <div style="margin-top:13px;"><button class="btn btn-acc" id="btn-add-np" onclick="addPedido()">✚ Añadir pedido</button></div>
+    </div>
+  </div>
+</div>
+
 </main>
+
+<!-- MODAL COMPLETAR PEDIDO -->
+<div class="overlay" id="modal-completar">
+  <div class="modal" style="max-width:420px">
+    <div class="mh"><span class="mt">✅ Completar pedido</span><button class="xbtn" onclick="closeM('modal-completar')">×</button></div>
+    <div class="mb">
+      <input type="hidden" id="cp-id">
+      <input type="hidden" id="cp-comp-id">
+      <p style="font-size:13px;color:var(--t2);margin-bottom:4px">Pedido:</p>
+      <p style="font-size:15px;font-weight:700;margin-bottom:16px" id="cp-nombre"></p>
+      <p style="font-size:13px;color:var(--t2)">¿Cuántas unidades has recibido?</p>
+      <div style="display:flex;align-items:center;gap:10px;margin-top:10px;">
+        <button class="btn btn-ghost" style="font-size:18px;padding:6px 14px;" onclick="stepCp(-1)">−</button>
+        <input type="number" id="cp-qty" min="1" step="1" value="1" style="max-width:90px;font-size:18px;text-align:center;font-family:var(--mn);">
+        <button class="btn btn-ghost" style="font-size:18px;padding:6px 14px;" onclick="stepCp(1)">+</button>
+      </div>
+      <p style="font-size:11.5px;color:var(--t3);margin-top:12px" id="cp-hint"></p>
+    </div>
+    <div class="mf">
+      <button class="btn btn-ghost" onclick="closeM('modal-completar')">Cancelar</button>
+      <button class="btn btn-acc" id="btn-cp-save" onclick="completarPedido()">✅ Completar y sumar al stock</button>
+    </div>
+  </div>
+</div>
 
 <!-- MODAL EDITAR VENTA -->
 <div class="overlay" id="mv">
@@ -382,19 +479,24 @@ function setSyncStatus(state, text){
 //  INIT — cargar datos desde Supabase
 // ══════════════════════════════════════════
 async function init(){
-  setLoadingMsg('Cargando inventario…');
+  setLoadingMsg('Cargando datos…');
   try {
-    const [ventas, inventario] = await Promise.all([ sbGet('ventas'), sbGet('inventario') ]);
-    V = ventas.map(rowToVenta);
-    I = inventario.map(rowToInv);
-    setSyncStatus('ok', 'Sincronizado');
+    const [ventas, inventario, taller, pedidos] = await Promise.all([
+      sbGet('ventas'), sbGet('inventario'),
+      sbGet('inventario_componentes'), sbGet('lista_compra')
+    ]);
+    V  = ventas.map(rowToVenta);
+    I  = inventario.map(rowToInv);
+  TC = taller.map(r=>({ id:r.id, nombre:r.nombre, cantidad:r.cantidad||0, umbral:r.umbral_minimo||0 }));
+    PD = pedidos.map(r=>({ id:r.id, nombre:r.nombre, qty:r.cantidad_pedida||1, compId:r.componente_id||null, fecha:r.created_at }));
+    setSyncStatus('ok','Sincronizado');
   } catch(e) {
     console.error(e);
-    setSyncStatus('err', 'Error de conexión');
-    toast('Error conectando con la base de datos', 'err');
+    setSyncStatus('err','Error de conexión');
+    toast('Error conectando con la base de datos','err');
   }
-  document.getElementById('loading-screen').style.display = 'none';
-  renderV(); renderI(); refreshSels();
+  document.getElementById('loading-screen').style.display='none';
+  renderV(); renderI(); refreshSels(); renderTaller(); renderPedidos(); refreshCompSel();
 }
 
 function setLoadingMsg(m){ document.getElementById('loading-msg').textContent = m; }
@@ -410,6 +512,8 @@ function showPage(n,btn){
   if(n==='resumen')renderR();
   if(n==='ventas')renderV();
   if(n==='inventario')renderI();
+  if(n==='taller')renderTaller();
+  if(n==='pedidos'){ renderPedidos(); refreshCompSel(); }
 }
 
 // ══════════════════════════════════════════
@@ -867,6 +971,229 @@ function importExcel(input){
     }catch(e){ setSyncStatus('err','Error'); toast('Error: '+e.message,'err'); }
   };
   reader.readAsArrayBuffer(file);
+}
+
+// ══════════════════════════════════════════
+//  TALLER — inventario_componentes
+// ══════════════════════════════════════════
+let TC = []; // componentes de taller
+
+async function loadTaller(){
+  const rows = await sbGet('inventario_componentes');
+  TC = rows.map(r=>({ id:r.id, nombre:r.nombre, cantidad:r.cantidad||0, umbral:r.umbral_minimo||0 }));
+}
+
+async function addComponente(){
+  const nombre = document.getElementById('tc-nombre').value.trim();
+  if(!nombre){ toast('Escribe el nombre del componente','err'); return; }
+  const cantidad = parseInt(document.getElementById('tc-qty').value)||0;
+  const umbral   = parseInt(document.getElementById('tc-umbral').value)||0;
+  setBusy('btn-add-tc',true);
+  setSyncStatus('loading','Guardando…');
+  try {
+    const rows = await sbInsert('inventario_componentes',{ nombre, cantidad, umbral_minimo: umbral });
+    const r = rows[0];
+    TC.push({ id:r.id, nombre:r.nombre, cantidad:r.cantidad, umbral:r.umbral_minimo });
+    ['tc-nombre','tc-qty','tc-umbral'].forEach(id=>document.getElementById(id).value='');
+    setSyncStatus('ok','Sincronizado');
+    renderTaller(); refreshCompSel();
+    toast('Componente añadido ✓','ok');
+  } catch(e){ setSyncStatus('err','Error'); toast('Error: '+e.message,'err'); }
+  setBusy('btn-add-tc',false);
+}
+
+async function delComponente(id){
+  if(!confirm('¿Eliminar este componente?'))return;
+  setSyncStatus('loading','Guardando…');
+  try {
+    await sbDelete('inventario_componentes',id);
+    TC = TC.filter(c=>c.id!==id);
+    setSyncStatus('ok','Sincronizado');
+    renderTaller(); refreshCompSel();
+    toast('Eliminado','ok');
+  } catch(e){ setSyncStatus('err','Error'); toast('Error: '+e.message,'err'); }
+}
+
+async function ajustarStock(id, delta){
+  const c = TC.find(x=>x.id===id); if(!c)return;
+  const nueva = Math.max(0, c.cantidad + delta);
+  setSyncStatus('loading','Guardando…');
+  try {
+    await sbUpdate('inventario_componentes', id, { cantidad: nueva });
+    c.cantidad = nueva;
+    setSyncStatus('ok','Sincronizado');
+    renderTaller();
+  } catch(e){ setSyncStatus('err','Error'); toast('Error: '+e.message,'err'); }
+}
+
+async function setStockDirecto(id){
+  const c = TC.find(x=>x.id===id); if(!c)return;
+  const el = document.getElementById('stock-input-'+id);
+  const val = parseInt(el.value);
+  if(isNaN(val)||val<0){ toast('Cantidad no válida','err'); return; }
+  setSyncStatus('loading','Guardando…');
+  try {
+    await sbUpdate('inventario_componentes', id, { cantidad: val });
+    c.cantidad = val;
+    setSyncStatus('ok','Sincronizado');
+    renderTaller();
+    toast('Stock actualizado ✓','ok');
+  } catch(e){ setSyncStatus('err','Error'); toast('Error: '+e.message,'err'); }
+}
+
+function renderTaller(){
+  const q = (document.getElementById('tc-search')?.value||'').toLowerCase();
+  const fl = TC.filter(c=>c.nombre.toLowerCase().includes(q));
+  const tb = document.getElementById('tc-tbody');
+  const em = document.getElementById('tc-empty');
+  const alertas = TC.filter(c=>c.umbral > 0 && c.cantidad < c.umbral);
+  const banner  = document.getElementById('taller-alert');
+  if(alertas.length){
+    banner.style.display='flex';
+    document.getElementById('taller-alert-txt').textContent = `${alertas.length} componente${alertas.length>1?'s':''} por debajo del stock mínimo: ${alertas.map(c=>c.nombre).join(', ')}`;
+  } else { banner.style.display='none'; }
+  document.getElementById('bt').textContent = TC.length;
+  if(!fl.length){ tb.innerHTML=''; em.style.display='block'; return; }
+  em.style.display='none';
+  tb.innerHTML = fl.map(c=>{
+    const low = c.umbral > 0 && c.cantidad < c.umbral;
+    const badge = `<span class="ubadge ${low?'':'ok'}">${low?'⚠ Bajo stock':'✓ OK'}</span>`;
+    return `<tr class="${low?'alert-row':''}">
+      <td><strong>${esc(c.nombre)}</strong></td>
+      <td class="${low?'qty-low':'qty-ok'}">${c.cantidad}</td>
+      <td class="mn" style="color:var(--t2)">${c.umbral}</td>
+      <td>${badge}</td>
+      <td>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <button class="btn btn-ghost btn-sm btn-ico" onclick="ajustarStock('${c.id}',-1)">−</button>
+          <input id="stock-input-${c.id}" type="number" min="0" value="${c.cantidad}" style="width:60px;text-align:center;padding:5px 6px;font-size:13px;font-family:var(--mn);">
+          <button class="btn btn-grn btn-sm" onclick="setStockDirecto('${c.id}')">✓</button>
+          <button class="btn btn-ghost btn-sm btn-ico" onclick="ajustarStock('${c.id}',1)">+</button>
+        </div>
+      </td>
+      <td><button class="btn btn-red btn-sm btn-ico" onclick="delComponente('${c.id}')">🗑</button></td>
+    </tr>`;
+  }).join('');
+}
+
+// ══════════════════════════════════════════
+//  PEDIDOS — lista_compra
+// ══════════════════════════════════════════
+let PD = []; // pedidos pendientes
+
+async function loadPedidos(){
+  document.getElementById('pedidos-list').innerHTML = '<div class="empty"><div class="spinner" style="margin:0 auto"></div></div>';
+  try {
+    const rows = await sbGet('lista_compra');
+    PD = rows.map(r=>({ id:r.id, nombre:r.nombre, qty:r.cantidad_pedida||1, compId:r.componente_id||null, fecha:r.created_at }));
+    renderPedidos();
+  } catch(e){ toast('Error cargando pedidos: '+e.message,'err'); }
+}
+
+async function addPedido(){
+  const nombre = document.getElementById('np-nombre').value.trim();
+  if(!nombre){ toast('Escribe el nombre','err'); return; }
+  const qty    = parseInt(document.getElementById('np-qty').value)||1;
+  const compId = document.getElementById('np-comp').value||null;
+  setBusy('btn-add-np',true);
+  setSyncStatus('loading','Guardando…');
+  try {
+    const rows = await sbInsert('lista_compra',{ nombre, cantidad_pedida:qty, componente_id:compId });
+    const r = rows[0];
+    PD.push({ id:r.id, nombre:r.nombre, qty:r.cantidad_pedida, compId:r.componente_id, fecha:r.created_at });
+    ['np-nombre','np-qty'].forEach(id=>document.getElementById(id).value='');
+    document.getElementById('np-comp').value='';
+    setSyncStatus('ok','Sincronizado');
+    renderPedidos();
+    toast('Pedido añadido ✓','ok');
+  } catch(e){ setSyncStatus('err','Error'); toast('Error: '+e.message,'err'); }
+  setBusy('btn-add-np',false);
+}
+
+function abrirCompletar(id){
+  const p = PD.find(x=>x.id===id); if(!p)return;
+  document.getElementById('cp-id').value    = id;
+  document.getElementById('cp-comp-id').value = p.compId||'';
+  document.getElementById('cp-nombre').textContent = p.nombre;
+  document.getElementById('cp-qty').value   = p.qty;
+  const comp = p.compId ? TC.find(c=>c.id===p.compId) : null;
+  document.getElementById('cp-hint').textContent = comp
+    ? `Stock actual de "${comp.nombre}": ${comp.cantidad} uds. Se sumará la cantidad recibida.`
+    : 'Este pedido no está vinculado a ningún componente del taller.';
+  openM('modal-completar');
+}
+
+function stepCp(d){ const el=document.getElementById('cp-qty'); el.value=Math.max(1,(parseInt(el.value)||1)+d); }
+
+async function completarPedido(){
+  const id     = document.getElementById('cp-id').value;
+  const compId = document.getElementById('cp-comp-id').value;
+  const qty    = parseInt(document.getElementById('cp-qty').value)||1;
+  setBusy('btn-cp-save',true);
+  setSyncStatus('loading','Guardando…');
+  try {
+    // sumar al stock del componente si está vinculado
+    if(compId){
+      const comp = TC.find(c=>c.id===compId);
+      if(comp){
+        const nueva = comp.cantidad + qty;
+        await sbUpdate('inventario_componentes', compId, { cantidad: nueva });
+        comp.cantidad = nueva;
+      }
+    }
+    // borrar de lista_compra
+    await sbDelete('lista_compra', id);
+    PD = PD.filter(x=>x.id!==id);
+    setSyncStatus('ok','Sincronizado');
+    closeM('modal-completar');
+    renderPedidos(); renderTaller();
+    toast(`Pedido completado — +${qty} uds sumadas al stock ✓`,'ok');
+  } catch(e){ setSyncStatus('err','Error'); toast('Error: '+e.message,'err'); }
+  setBusy('btn-cp-save',false);
+}
+
+function renderPedidos(){
+  document.getElementById('bp').textContent = PD.length;
+  const container = document.getElementById('pedidos-list');
+  if(!PD.length){
+    container.innerHTML='<div class="empty"><div class="ico">✅</div><p>No hay pedidos pendientes.<br>¡Todo en orden!</p></div>';
+    return;
+  }
+  container.innerHTML = PD.map(p=>{
+    const comp = p.compId ? TC.find(c=>c.id===p.compId) : null;
+    const fecha = p.fecha ? new Date(p.fecha).toLocaleDateString('es-ES') : '';
+    return `<div class="pedido-row">
+      <div style="flex:1;min-width:0;">
+        <div class="pedido-nombre">${esc(p.nombre)}</div>
+        ${comp?`<div style="font-size:11px;color:var(--t3);margin-top:2px">🔗 ${esc(comp.nombre)} · stock actual: ${comp.cantidad}</div>`:''}
+      </div>
+      <span class="pedido-qty">×${p.qty}</span>
+      <span class="pedido-fecha">${fecha}</span>
+      <button class="btn btn-grn btn-sm" onclick="abrirCompletar('${p.id}')">✅ Completado</button>
+      <button class="btn btn-red btn-sm btn-ico" onclick="cancelarPedido('${p.id}')" title="Cancelar">✕</button>
+    </div>`;
+  }).join('');
+}
+
+async function cancelarPedido(id){
+  if(!confirm('¿Cancelar este pedido?'))return;
+  setSyncStatus('loading','Guardando…');
+  try {
+    await sbDelete('lista_compra', id);
+    PD = PD.filter(x=>x.id!==id);
+    setSyncStatus('ok','Sincronizado');
+    renderPedidos();
+    toast('Pedido cancelado','ok');
+  } catch(e){ setSyncStatus('err','Error'); toast('Error: '+e.message,'err'); }
+}
+
+function refreshCompSel(){
+  ['np-comp'].forEach(selId=>{
+    const sel=document.getElementById(selId); if(!sel)return;
+    const cur=sel.value;
+    sel.innerHTML='<option value="">— Sin vincular —</option>';
+    TC.forEach(c=>{ const o=document.createElement('option'); o.value=c.id; o.textContent=`${c.nombre} (stock: ${c.cantidad})`; if(c.id===cur)o.selected=true; sel.appendChild(o); });
+  });
 }
 
 // ══════════════════════════════════════════
