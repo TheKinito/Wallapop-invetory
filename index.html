@@ -1328,11 +1328,23 @@ async function callClaude(userMsg){
   const typingEl=addMsg('ai','',true);
   try{
     const msgs=aiHistory.slice(0,-1).concat([{role:'user',content:userMsg}]);
-    const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,system:aiCtx?.system||'Eres un experto en reparación de electrónica. Responde en español.',messages:msgs})});
+    // Llama a tu API en Railway (proxy seguro hacia Claude)
+    const res=await fetch(`${API_URL}/ai`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        system: aiCtx?.system||'Eres un experto en reparación de electrónica. Responde en español.',
+        messages: msgs
+      })
+    });
+    if(!res.ok) throw new Error(`Error ${res.status}`);
     const data=await res.json();
-    const reply=data.content?.map(b=>b.text||'').join('\n')||'Error al obtener respuesta.';
+    const reply=data.reply||'Error al obtener respuesta.';
     typingEl.remove();addMsg('ai',reply);aiHistory.push({role:'assistant',content:reply});
-  }catch(e){typingEl.remove();addMsg('ai','Error de conexión con la IA. Verifica tu conexión.');}
+  }catch(e){
+    typingEl.remove();
+    addMsg('ai','Error de conexión con la IA. Comprueba que la API de Railway está activa y que ANTHROPIC_API_KEY está configurada.');
+  }
 }
 
 // ══════════════════════════════════════════
