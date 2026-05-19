@@ -1132,35 +1132,35 @@ function calcFullProfit(buyPrice, dmgInfo, repairCost){
   if(!buyPrice||buyPrice===0)return{profit:0,roi:0,estimatedSell:0,totalInvested:0};
   const severity=dmgInfo.severity||0;
 
-  // Estrategia venta agresiva (cashflow rápido):
-  // Precio de venta = precio de compra + coste reparación + margen neto ajustado
-  // El objetivo es rotar rápido, no maximizar cada venta.
-  //
-  // Referencia real Wallapop segunda mano:
-  //   Sin daños  → vendes ~10-15% por encima de lo que compraste
-  //   Daños leves → compras barato, reparas, vendes a ~precio mercado -20% (para salir rápido)
-  //   Daños graves → más riesgo, más trabajo, margen algo mayor si sale bien
-
+  // Total invertido = lo que pagas + lo que cuesta reparar
   const totalInvested = buyPrice + repairCost;
 
-  let targetProfit;
+  // Precio de venta estimado en Wallapop (segunda mano, venta agresiva):
+  // Partimos del precio de compra (no del total invertido) porque el mercado
+  // de segunda mano se basa en lo que vale el producto, no en tu coste.
+  // Con daños el producto vale MENOS que el precio de compra en el mercado.
+  let marketValue;
   if(severity === 0){
-    // Producto sin daños: margen pequeño, venta rápida
-    targetProfit = Math.round(buyPrice * 0.12);
+    // Sin daños: vale lo que compraste + pequeño margen de reventa rápida
+    marketValue = Math.round(buyPrice * 1.12);
   } else if(severity <= 3){
-    // Daños leves (carcasa, batería): margen moderado
-    targetProfit = Math.round(totalInvested * 0.18);
+    // Daños leves: el mercado lo valora ~20% menos que uno en buen estado
+    marketValue = Math.round(buyPrice * 1.35);
   } else if(severity <= 6){
-    // Daños medios (pantalla, puerto): más trabajo, margen algo mejor
-    targetProfit = Math.round(totalInvested * 0.22);
+    // Daños medios: reparado vale ~50% más de lo que pagaste por él roto
+    marketValue = Math.round(buyPrice * 1.55);
   } else {
-    // Daños graves (agua, no enciende): riesgo alto, margen mayor si sale
-    targetProfit = Math.round(totalInvested * 0.28);
+    // Daños graves: reparado puede valer el doble de lo que pagaste roto
+    marketValue = Math.round(buyPrice * 1.75);
   }
 
-  const estimatedSell = Math.round(totalInvested + targetProfit);
-  const profit = Math.round(estimatedSell - totalInvested);
+  // Precio de venta = valor de mercado del producto reparado
+  const estimatedSell = marketValue;
+
+  // Beneficio REAL = venta - compra - reparación
+  const profit = estimatedSell - totalInvested;
   const roi = totalInvested > 0 ? Math.round((profit / totalInvested) * 100) : 0;
+
   return{profit, roi, estimatedSell, totalInvested};
 }
 
