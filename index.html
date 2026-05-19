@@ -447,6 +447,27 @@ tbody td{padding:8px 10px;vertical-align:middle;}
       <span style="color:var(--t3);font-size:12px">—</span>
       <input type="number" id="rl-pmax" placeholder="Max" min="0" style="width:75px">
     </div>
+    <select id="rl-categoria" style="min-width:150px">
+      <option value="">Todas las categorías</option>
+      <optgroup label="🎮 Videojuegos">
+        <option value="consolas">Consolas</option>
+        <option value="mandos">Mandos y accesorios</option>
+        <option value="juegos">Juegos</option>
+        <option value="portatiles">Consolas portátiles</option>
+      </optgroup>
+      <optgroup label="📱 Tecnología">
+        <option value="moviles">Móviles</option>
+        <option value="tablets">Tablets</option>
+        <option value="ordenadores">Ordenadores y portátiles</option>
+        <option value="audio">Auriculares y audio</option>
+        <option value="camaras">Cámaras</option>
+        <option value="componentes">Componentes PC</option>
+      </optgroup>
+      <optgroup label="🔧 Otros">
+        <option value="electrodomesticos">Electrodomésticos</option>
+        <option value="television">TV y proyectores</option>
+      </optgroup>
+    </select>
     <select id="rl-estado" style="min-width:130px">
       <option value="">Todos los estados</option>
       <option value="nuevo">Nuevo</option>
@@ -1019,6 +1040,7 @@ async function doSearch(){
   const q=document.getElementById('rl-query').value.trim();if(!q)return;
   const pmin=document.getElementById('rl-pmin').value,pmax=document.getElementById('rl-pmax').value;
   const estado=document.getElementById('rl-estado').value,orden=document.getElementById('rl-orden').value;
+  const categoria=document.getElementById('rl-categoria').value;
   const container=document.getElementById('rl-results');
 
   container.innerHTML=`<div style="text-align:center;padding:3rem 1rem">
@@ -1031,6 +1053,7 @@ async function doSearch(){
     if(pmin)params.append('minPrice',pmin);
     if(pmax)params.append('maxPrice',pmax);
     if(estado)params.append('condition',estado);
+    if(categoria)params.append('category',categoria);
     params.append('limit','24');
 
     const res=await fetch(`${API_URL}/search?${params}`,{signal:AbortSignal.timeout(40000)});
@@ -1234,7 +1257,7 @@ function renderWallapopFallback(q,pmin,pmax,estado,orden){
     </div>`;
 }
 
-function clearRLFilters(){document.getElementById('rl-pmin').value='';document.getElementById('rl-pmax').value='';document.getElementById('rl-estado').value='';document.getElementById('rl-orden').value='newest';}
+function clearRLFilters(){document.getElementById('rl-pmin').value='';document.getElementById('rl-pmax').value='';document.getElementById('rl-estado').value='';document.getElementById('rl-orden').value='newest';document.getElementById('rl-categoria').value='';}
 
 function openWpModal(item){
   document.getElementById('modal-wp-title').textContent=item.name;
