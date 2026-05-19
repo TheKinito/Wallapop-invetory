@@ -1063,13 +1063,15 @@ function renderRealResults(data,q){
 const sellPriceCache = new Map();
 
 function renderRealCard(item){
-  const price=(item.price||0).toFixed(2);
+  // Asegurarse de que el precio es siempre un número
+  const buyPrice=parseFloat(item.price)||parseFloat(item.priceText?.replace(/[^0-9,.]/g,'').replace(',','.'))||0;
+  const price=buyPrice.toFixed(2);
   const name=item.title||'Producto';
   const id=item.id||'';
   const location=item.location||'';
   const dmgInfo=detectDamages(name+' '+(item.description||''));
   const repairCost=estimateRepairCost(dmgInfo.list);
-  const analysis=calcFullProfit(item.price||0, dmgInfo, repairCost);
+  const analysis=calcFullProfit(buyPrice, dmgInfo, repairCost);
   const safeItem=JSON.stringify({name,price,id,location,description:item.description||'',damages:dmgInfo.list,repairCost}).replace(/"/g,'&quot;');
   const roiColor=analysis.roi>=30?'var(--grn)':analysis.roi>=10?'var(--acc)':'var(--red)';
   const roiLabel=analysis.roi>=30?'Buena op.':analysis.roi>=10?'Regular':'Riesgo';
@@ -1082,11 +1084,11 @@ function renderRealCard(item){
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;text-align:center;font-size:11.5px;">
         <div><div style="color:var(--t3);font-size:10px;margin-bottom:2px">Compra</div><div style="font-family:var(--mn);font-weight:700">${price} €</div></div>
         <div><div style="color:var(--t3);font-size:10px;margin-bottom:2px">Reparación</div><div style="font-family:var(--mn);font-weight:700;color:var(--red)">~${repairCost} €</div></div>
-        <div><div style="color:var(--t3);font-size:10px;margin-bottom:2px">Venta est.</div><div style="font-family:var(--mn);font-weight:700;color:var(--blu)" id="sell-${id}">~${analysis.estimatedSell} €</div></div>
+        <div><div style="color:var(--t3);font-size:10px;margin-bottom:2px">Venta est.</div><div style="font-family:var(--mn);font-weight:700;color:var(--blu)" id="sell-${id}">~${Math.round(analysis.estimatedSell)} €</div></div>
       </div>
       <div style="border-top:1px solid var(--bd);margin-top:8px;padding-top:7px;display:flex;justify-content:space-between;align-items:center;">
-        <div><span style="font-size:10px;color:var(--t3)">Beneficio neto</span><span style="font-family:var(--mn);font-weight:700;color:${roiColor};margin-left:6px">${analysis.profit>=0?'+':''}${analysis.profit} €</span></div>
-        <span style="font-size:10px;padding:2px 7px;border-radius:4px;background:${analysis.roi>=30?'rgba(82,201,122,.12)':analysis.roi>=10?'rgba(240,165,0,.12)':'rgba(232,81,58,.12)'};color:${roiColor}">${roiLabel} · ${analysis.roi}% ROI</span>
+        <div><span style="font-size:10px;color:var(--t3)">Beneficio neto</span><span style="font-family:var(--mn);font-weight:700;color:${roiColor};margin-left:6px">${analysis.profit>=0?'+':''}${Math.round(analysis.profit)} €</span></div>
+        <span style="font-size:10px;padding:2px 7px;border-radius:4px;background:${analysis.roi>=30?'rgba(82,201,122,.12)':analysis.roi>=10?'rgba(240,165,0,.12)':'rgba(232,81,58,.12)'};color:${roiColor}">${roiLabel} · ${Math.round(analysis.roi)}% ROI</span>
       </div>
     </div>
     <div class="pcard-actions">
@@ -1129,36 +1131,24 @@ function estimateRepairCost(damageLabels){
 }
 
 function calcFullProfit(buyPrice, dmgInfo, repairCost){
-  if(!buyPrice||buyPrice===0)return{profit:0,roi:0,estimatedSell:0,totalInvested:0};
-  const severity=dmgInfo.severity||0;
+  buyPrice = parseFloat(buyPrice) || 0;
+  repairCost = parseFloat(repairCost) || 0;
+  if(buyPrice === 0) return{profit:0, roi:0, estimatedSell:0, totalInvested:0};
 
-  // Total invertido = lo que pagas + lo que cuesta reparar
+  const severity = dmgInfo.severity || 0;
   const totalInvested = buyPrice + repairCost;
 
-  // Precio de venta estimado en Wallapop (segunda mano, venta agresiva):
-  // Partimos del precio de compra (no del total invertido) porque el mercado
-  // de segunda mano se basa en lo que vale el producto, no en tu coste.
-  // Con daños el producto vale MENOS que el precio de compra en el mercado.
-  let marketValue;
-  if(severity === 0){
-    // Sin daños: vale lo que compraste + pequeño margen de reventa rápida
-    marketValue = Math.round(buyPrice * 1.12);
-  } else if(severity <= 3){
-    // Daños leves: el mercado lo valora ~20% menos que uno en buen estado
-    marketValue = Math.round(buyPrice * 1.35);
-  } else if(severity <= 6){
-    // Daños medios: reparado vale ~50% más de lo que pagaste por él roto
-    marketValue = Math.round(buyPrice * 1.55);
-  } else {
-    // Daños graves: reparado puede valer el doble de lo que pagaste roto
-    marketValue = Math.round(buyPrice * 1.75);
-  }
+  // Precio de venta estimado: basado en el precio de compra × multiplicador
+  // El mercado de segunda mano fija el precio según el estado del producto,
+  // no según lo que gastaste en repararlo.
+  let mult;
+  if(severity === 0)       mult = 1.12; // sin daños: +12% margen rápido
+  else if(severity <= 3)   mult = 1.35; // daños leves: reparado vale 35% más
+  else if(severity <= 6)   mult = 1.55; // daños medios: reparado vale 55% más
+  else                     mult = 1.75; // daños graves: reparado vale 75% más
 
-  // Precio de venta = valor de mercado del producto reparado
-  const estimatedSell = marketValue;
-
-  // Beneficio REAL = venta - compra - reparación
-  const profit = estimatedSell - totalInvested;
+  const estimatedSell = Math.round(buyPrice * mult);
+  const profit = Math.round(estimatedSell - totalInvested);
   const roi = totalInvested > 0 ? Math.round((profit / totalInvested) * 100) : 0;
 
   return{profit, roi, estimatedSell, totalInvested};
