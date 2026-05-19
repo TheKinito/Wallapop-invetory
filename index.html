@@ -1043,17 +1043,44 @@ async function doSearch(){
   }
 }
 
+const MIN_PROFIT = 15; // € mínimo de beneficio para mostrar un producto
+
 function renderRealResults(data,q){
   const container=document.getElementById('rl-results');
-  const items=data.items||[];
-  if(!items.length){
+  const allItems=data.items||[];
+  if(!allItems.length){
     container.innerHTML=`<div class="empty"><p>Sin resultados para "<strong>${esc(q)}</strong>"</p><br><a href="${data.wallapopUrl||'https://es.wallapop.com/app/search?keywords='+encodeURIComponent(q)}" target="_blank" style="color:var(--lime)">Ver en Wallapop →</a></div>`;
     return;
   }
+
+  // Filtrar productos cuyo beneficio estimado sea menor a MIN_PROFIT €
+  const items = allItems.filter(item => {
+    const buyPrice = parseFloat(item.price) || 0;
+    if(buyPrice === 0) return false;
+    const dmgInfo = detectDamages((item.title||'') + ' ' + (item.description||''));
+    const repairCost = estimateRepairCost(dmgInfo.list);
+    const analysis = calcFullProfit(buyPrice, dmgInfo, repairCost);
+    return analysis.profit >= MIN_PROFIT;
+  });
+
+  const filteredOut = allItems.length - items.length;
+
+  if(!items.length){
+    container.innerHTML=`<div class="empty">
+      <p>Ningún resultado supera los <strong>${MIN_PROFIT}€ de beneficio</strong> para "<strong>${esc(q)}</strong>"</p>
+      <p style="font-size:12px;color:var(--t3);margin-top:8px">Se han ocultado ${filteredOut} producto${filteredOut!==1?'s':''} con beneficio insuficiente</p>
+      <br><a href="${data.wallapopUrl||'https://es.wallapop.com/app/search?keywords='+encodeURIComponent(q)}" target="_blank" style="color:var(--lime)">Ver todos en Wallapop →</a>
+    </div>`;
+    return;
+  }
+
   container.innerHTML=`
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-      <span style="font-size:12px;color:var(--t2)"><strong style="color:var(--lime);font-family:var(--mn)">${items.length}</strong> resultados para "<strong>${esc(q)}</strong>"</span>
-      <a href="${data.wallapopUrl}" target="_blank" style="font-size:11.5px;color:var(--lime);text-decoration:none">Ver en Wallapop →</a>
+      <span style="font-size:12px;color:var(--t2)">
+        <strong style="color:var(--lime);font-family:var(--mn)">${items.length}</strong> oportunidades para "<strong>${esc(q)}</strong>"
+        ${filteredOut>0?`<span style="color:var(--t3);margin-left:6px">(${filteredOut} ocultados por <${MIN_PROFIT}€ beneficio)</span>`:''}
+      </span>
+      <a href="${data.wallapopUrl}" target="_blank" style="font-size:11.5px;color:var(--lime);text-decoration:none">Ver todos en Wallapop →</a>
     </div>
     <div class="products-grid">${items.map(renderRealCard).join('')}</div>`;
   setTimeout(()=>enrichWithRealSellPrice(items),500);
