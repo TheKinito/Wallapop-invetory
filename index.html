@@ -1078,7 +1078,7 @@ function renderRealResults(data,q){
 
   // Filtrar productos cuyo beneficio estimado sea menor a MIN_PROFIT €
   const items = allItems.filter(item => {
-    const buyPrice = parseFloat(item.price) || 0;
+    const buyPrice = parseFloat(item.price) || parseFloat((item.priceText||'').replace(/\./g,'').replace(',','.').replace(/[^0-9.]/g,'')) || 0;
     if(buyPrice === 0) return false;
     const dmgInfo = detectDamages((item.title||'') + ' ' + (item.description||''));
     const repairCost = estimateRepairCost(dmgInfo.list);
@@ -1114,7 +1114,8 @@ const sellPriceCache = new Map();
 
 function renderRealCard(item){
   // Asegurarse de que el precio es siempre un número
-  const buyPrice=parseFloat(item.price)||parseFloat(item.priceText?.replace(/[^0-9,.]/g,'').replace(',','.'))||0;
+  // Parsear precio correctamente desde número o desde texto "54,95 €"
+  const buyPrice=parseFloat(item.price)||parseFloat((item.priceText||'').replace(/\./g,'').replace(',','.').replace(/[^0-9.]/g,''))||0;
   const price=buyPrice.toFixed(2);
   const name=item.title||'Producto';
   const id=item.id||'';
