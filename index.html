@@ -1011,7 +1011,7 @@ function importExcel(input){
 // ══════════════════════════════════════════
 
 // ⚙️ CAMBIA ESTA URL por la de tu API en Railway
-const API_URL = 'https://wallapop-api-production.up.railway.app';
+const API_URL = 'https://TU-API.railway.app';
 
 let lastAnalyzed = {}; // cache de análisis IA por item id
 
@@ -1056,31 +1056,37 @@ function renderRealResults(data,q){
       <a href="${data.wallapopUrl}" target="_blank" style="font-size:11.5px;color:var(--lime);text-decoration:none">Ver en Wallapop →</a>
     </div>
     <div class="products-grid">${items.map(renderRealCard).join('')}</div>`;
+  setTimeout(()=>enrichWithRealSellPrice(items),500);
 }
+
+// Cache de precios de venta para no repetir peticiones
+const sellPriceCache = new Map();
 
 function renderRealCard(item){
   const price=(item.price||0).toFixed(2);
   const name=item.title||'Producto';
   const id=item.id||'';
   const location=item.location||'';
-
-  // Detectar daños potenciales desde el título/descripción
   const dmgInfo=detectDamages(name+' '+(item.description||''));
-  const profitRange=calcProfitRange(item.price||0, dmgInfo.severity);
-
-  const safeItem=JSON.stringify({name,price,id,location,description:item.description||'',damages:dmgInfo.list}).replace(/"/g,'&quot;');
-
-  return`<div class="pcard" onclick='openWpModal(${safeItem})'>
+  const repairCost=estimateRepairCost(dmgInfo.list);
+  const analysis=calcFullProfit(item.price||0, dmgInfo, repairCost);
+  const safeItem=JSON.stringify({name,price,id,location,description:item.description||'',damages:dmgInfo.list,repairCost}).replace(/"/g,'&quot;');
+  const roiColor=analysis.roi>=30?'var(--grn)':analysis.roi>=10?'var(--acc)':'var(--red)';
+  const roiLabel=analysis.roi>=30?'Buena op.':analysis.roi>=10?'Regular':'Riesgo';
+  return`<div class="pcard" id="card-${id}" onclick='openWpModal(${safeItem})'>
     ${item.imageUrl?`<img src="${item.imageUrl}" alt="" style="width:100%;height:130px;object-fit:cover;border-radius:7px 7px 0 0;margin:-14px -14px 10px;width:calc(100% + 28px)">`:'' }
-    <div class="pcard-top">
-      <div class="pcard-name">${esc(name)}</div>
-    </div>
-    ${location?`<div style="font-size:10.5px;color:var(--t3);margin-bottom:7px">📍 ${esc(location)}</div>`:''}
-    ${dmgInfo.list.length?`<div style="margin-bottom:8px;display:flex;flex-wrap:wrap;gap:4px">${dmgInfo.list.slice(0,3).map(d=>`<span style="font-size:10px;padding:2px 6px;border-radius:4px;background:rgba(232,81,58,.1);color:var(--red);border:1px solid rgba(232,81,58,.2)">⚠ ${esc(d)}</span>`).join('')}</div>`:''}
-    <div class="pcard-prices">
-      <div><div class="pprice-label">Precio</div><div class="pprice-val">${price} €</div></div>
-      <div><div class="pprice-label">Beneficio est.</div>
-        <div class="pprice-val profit" title="Rango según daños detectados">${profitRange}</div>
+    <div class="pcard-top"><div class="pcard-name">${esc(name)}</div></div>
+    ${location?`<div style="font-size:10.5px;color:var(--t3);margin-bottom:6px">📍 ${esc(location)}</div>`:''}
+    ${dmgInfo.list.length?`<div style="margin-bottom:7px;display:flex;flex-wrap:wrap;gap:3px">${dmgInfo.list.slice(0,3).map(d=>`<span style="font-size:10px;padding:2px 6px;border-radius:4px;background:rgba(232,81,58,.1);color:var(--red);border:1px solid rgba(232,81,58,.2)">⚠ ${esc(d)}</span>`).join('')}</div>`:''}
+    <div style="background:var(--s2);border-radius:8px;padding:9px 11px;margin-bottom:9px;">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;text-align:center;font-size:11.5px;">
+        <div><div style="color:var(--t3);font-size:10px;margin-bottom:2px">Compra</div><div style="font-family:var(--mn);font-weight:700">${price} €</div></div>
+        <div><div style="color:var(--t3);font-size:10px;margin-bottom:2px">Reparación</div><div style="font-family:var(--mn);font-weight:700;color:var(--red)">~${repairCost} €</div></div>
+        <div><div style="color:var(--t3);font-size:10px;margin-bottom:2px">Venta est.</div><div style="font-family:var(--mn);font-weight:700;color:var(--blu)" id="sell-${id}">~${analysis.estimatedSell} €</div></div>
+      </div>
+      <div style="border-top:1px solid var(--bd);margin-top:8px;padding-top:7px;display:flex;justify-content:space-between;align-items:center;">
+        <div><span style="font-size:10px;color:var(--t3)">Beneficio neto</span><span style="font-family:var(--mn);font-weight:700;color:${roiColor};margin-left:6px">${analysis.profit>=0?'+':''}${analysis.profit} €</span></div>
+        <span style="font-size:10px;padding:2px 7px;border-radius:4px;background:${analysis.roi>=30?'rgba(82,201,122,.12)':analysis.roi>=10?'rgba(240,165,0,.12)':'rgba(232,81,58,.12)'};color:${roiColor}">${roiLabel} · ${analysis.roi}% ROI</span>
       </div>
     </div>
     <div class="pcard-actions">
@@ -1093,36 +1099,66 @@ function renderRealCard(item){
 function detectDamages(text){
   const t=text.toLowerCase();
   const keywords=[
-    {k:['pantalla rota','pantalla crack','pantalla rayada','display roto'],label:'Pantalla rota',sev:3},
-    {k:['no carga','no enciende','no arranca','sin batería','batería mala'],label:'No funciona/carga',sev:4},
-    {k:['carcasa rota','carcasa rajada','carcasa golpe','golpeado','abollado'],label:'Carcasa dañada',sev:2},
-    {k:['teclado roto','tecla','botón roto'],label:'Teclado/botones',sev:2},
-    {k:['agua','mojado','humedad','oxidado'],label:'Daño por agua',sev:5},
-    {k:['camara rota','cámara falla','foto borrosa'],label:'Cámara dañada',sev:2},
-    {k:['altavoz','micrófono','sonido','audio'],label:'Audio dañado',sev:2},
-    {k:['conector','puerto','usb','jack'],label:'Puerto dañado',sev:2},
-    {k:['averiado','avería','falla','fallo','defecto','piezas','para piezas'],label:'Averiado',sev:4},
-    {k:['leer descripción','leer desc','ver fotos'],label:'Ver descripción',sev:1},
+    {k:['pantalla rota','pantalla crack','pantalla rayada','display roto','lcd roto'],label:'Pantalla rota',sev:3,cost:40},
+    {k:['no carga','no enciende','no arranca','sin batería','batería mala','batería muerta'],label:'No carga/enciende',sev:4,cost:25},
+    {k:['carcasa rota','carcasa rajada','golpeado','abollado','tapa rota'],label:'Carcasa dañada',sev:2,cost:15},
+    {k:['teclado roto','tecla rota','botón roto','botón no funciona'],label:'Teclado/botones',sev:2,cost:20},
+    {k:['agua','mojado','humedad','oxidado'],label:'Daño por agua',sev:5,cost:35},
+    {k:['camara rota','cámara falla','foto borrosa','camara no funciona'],label:'Cámara dañada',sev:2,cost:30},
+    {k:['altavoz roto','micrófono','sin sonido','audio falla'],label:'Audio dañado',sev:2,cost:15},
+    {k:['conector roto','puerto roto','usb roto','jack roto','no conecta'],label:'Puerto dañado',sev:2,cost:12},
+    {k:['averiado','avería','para piezas','no funciona','defectuoso'],label:'Averiado',sev:4,cost:20},
+    {k:['joystick','drift','mando roto','gatillo roto'],label:'Mando/joystick',sev:2,cost:18},
   ];
   const found=[];let totalSev=0;
-  for(const{k,label,sev} of keywords){
+  for(const{k,label,sev,cost} of keywords){
     if(k.some(kw=>t.includes(kw))){found.push(label);totalSev+=sev;}
   }
   return{list:found,severity:Math.min(totalSev,10)};
 }
 
-function calcProfitRange(price, severity){
-  if(!price||price===0)return '—';
-  // Cuanto más daños, más riesgo pero también más margen potencial
-  const baseMargin=0.5; // 50% margen base en wallapop flipping
-  const repairCostFactor=severity*0.04; // más daños = más coste reparación
-  const minProfit=Math.round(price*(baseMargin-repairCostFactor-0.1));
-  const maxProfit=Math.round(price*(baseMargin+0.2));
-  const minPct=Math.round((baseMargin-repairCostFactor)*100-10);
-  const maxPct=Math.round((baseMargin+0.2)*100);
-  if(minProfit<=0)return`<span style="color:var(--red)">Riesgo alto</span>`;
-  return`+${minProfit}–${maxProfit} € <span style="font-size:10px;color:var(--t2)">(${minPct}–${maxPct}%)</span>`;
+function estimateRepairCost(damageLabels){
+  let invCost=0;let fromInv=0;
+  for(const label of damageLabels){
+    const kw=label.toLowerCase().split('/')[0].split(' ')[0];
+    const match=I.find(r=>(r.nombre||'').toLowerCase().includes(kw));
+    if(match&&match.stockActual>0){invCost+=match.precio;fromInv++;}
+  }
+  if(fromInv>0)return Math.round(invCost);
+  return Math.round(damageLabels.length*18);
 }
+
+function calcFullProfit(buyPrice, dmgInfo, repairCost){
+  if(!buyPrice||buyPrice===0)return{profit:0,roi:0,estimatedSell:0,totalInvested:0};
+  const severity=dmgInfo.severity||0;
+  const sellMultiplier=severity===0?2.2:severity<=3?1.9:severity<=6?1.6:1.4;
+  const estimatedSell=Math.round(buyPrice*sellMultiplier);
+  const totalInvested=buyPrice+repairCost;
+  const profit=Math.round(estimatedSell-totalInvested);
+  const roi=totalInvested>0?Math.round((profit/totalInvested)*100):0;
+  return{profit,roi,estimatedSell,totalInvested};
+}
+
+async function enrichWithRealSellPrice(items){
+  if(!items||!items.length)return;
+  const q=items[0].title.toLowerCase().split(' ').slice(0,3).join(' ');
+  if(!q||sellPriceCache.has(q))return;
+  try{
+    const res=await fetch(`${API_URL}/search?q=${encodeURIComponent(q)}&condition=buen_estado&limit=8`,{signal:AbortSignal.timeout(15000)});
+    if(!res.ok)return;
+    const data=await res.json();
+    if(!data.items||!data.items.length)return;
+    const prices=data.items.map(i=>i.price).filter(p=>p>0).sort((a,b)=>a-b);
+    if(!prices.length)return;
+    const median=prices[Math.floor(prices.length/2)];
+    sellPriceCache.set(q,median);
+    items.forEach(item=>{
+      const el=document.getElementById(`sell-${item.id}`);
+      if(el&&median>0){el.textContent=`${median} €`;el.title='Precio real Wallapop (buen estado)';el.style.color='var(--lime)';}
+    });
+  }catch(_){}
+}
+
 
 function launchAIFromItem(item){
   // Prepoblamos el formulario de IA con todos los datos del item
