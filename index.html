@@ -1007,54 +1007,180 @@ function importExcel(input){
 }
 
 // ══════════════════════════════════════════
-// REPAIRLAB: WALLAPOP SEARCH
+// REPAIRLAB: WALLAPOP SEARCH (via Playwright API)
 // ══════════════════════════════════════════
+
+// ⚙️ CAMBIA ESTA URL por la de tu API en Railway
+const API_URL = 'https://TU-API.railway.app';
+
+let lastAnalyzed = {}; // cache de análisis IA por item id
+
 async function doSearch(){
   const q=document.getElementById('rl-query').value.trim();if(!q)return;
   const pmin=document.getElementById('rl-pmin').value,pmax=document.getElementById('rl-pmax').value;
   const estado=document.getElementById('rl-estado').value,orden=document.getElementById('rl-orden').value;
   const container=document.getElementById('rl-results');
-  container.innerHTML=`<div class="empty"><div class="ico" style="font-size:24px">🔍</div><p>Buscando en Wallapop…</p></div>`;
+
+  container.innerHTML=`<div style="text-align:center;padding:3rem 1rem">
+    <div style="display:inline-block;width:24px;height:24px;border:2px solid var(--bd);border-top-color:var(--lime);border-radius:50%;animation:spin .7s linear infinite;margin-bottom:12px"></div>
+    <p style="color:var(--t2);font-size:13px">Buscando en Wallapop con Playwright…<br><span style="color:var(--t3);font-size:11px">Esto puede tardar 10-15 segundos</span></p>
+  </div>`;
+
   try{
-    let params=new URLSearchParams({keywords:q,order_by:orden,country_code:'ES',language:'es_ES'});
-    if(pmin)params.append('min_sale_price',pmin*100);
-    if(pmax)params.append('max_sale_price',pmax*100);
+    const params=new URLSearchParams({q,order:orden});
+    if(pmin)params.append('minPrice',pmin);
+    if(pmax)params.append('maxPrice',pmax);
     if(estado)params.append('condition',estado);
-    const res=await fetch(`https://api.wallapop.com/api/v3/general/search?${params}`,{headers:{Accept:'application/json','Accept-Language':'es-ES'}});
-    if(!res.ok)throw new Error('API error');
+    params.append('limit','24');
+
+    const res=await fetch(`${API_URL}/search?${params}`,{signal:AbortSignal.timeout(40000)});
+    if(!res.ok)throw new Error(`API ${res.status}`);
     const data=await res.json();
-    renderWallapopResults(data,q,pmin,pmax,estado);
-  }catch(e){renderWallapopFallback(q,pmin,pmax,estado,orden);}
+    renderRealResults(data,q);
+  }catch(e){
+    console.warn('API error:',e.message);
+    renderWallapopFallback(q,pmin,pmax,estado,orden);
+  }
 }
-function renderWallapopResults(data,q){
+
+function renderRealResults(data,q){
   const container=document.getElementById('rl-results');
-  const items=data?.search_objects||data?.items||[];
-  if(!items.length){container.innerHTML=`<div class="empty"><p>Sin resultados para "<strong>${esc(q)}</strong>"</p><br><a href="https://es.wallapop.com/app/search?keywords=${encodeURIComponent(q)}" target="_blank" style="color:var(--lime);font-size:12.5px">Ver en Wallapop →</a></div>`;return;}
-  container.innerHTML=`<div style="font-size:12px;color:var(--t2);margin-bottom:10px"><strong style="color:var(--lime);font-family:var(--mn)">${items.length}</strong> resultados · <a href="https://es.wallapop.com/app/search?keywords=${encodeURIComponent(q)}" target="_blank" style="color:var(--lime)">Ver todos en Wallapop →</a></div><div class="products-grid">${items.map(renderPCard).join('')}</div>`;
+  const items=data.items||[];
+  if(!items.length){
+    container.innerHTML=`<div class="empty"><p>Sin resultados para "<strong>${esc(q)}</strong>"</p><br><a href="${data.wallapopUrl||'https://es.wallapop.com/app/search?keywords='+encodeURIComponent(q)}" target="_blank" style="color:var(--lime)">Ver en Wallapop →</a></div>`;
+    return;
+  }
+  container.innerHTML=`
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <span style="font-size:12px;color:var(--t2)"><strong style="color:var(--lime);font-family:var(--mn)">${items.length}</strong> resultados para "<strong>${esc(q)}</strong>"</span>
+      <a href="${data.wallapopUrl}" target="_blank" style="font-size:11.5px;color:var(--lime);text-decoration:none">Ver en Wallapop →</a>
+    </div>
+    <div class="products-grid">${items.map(renderRealCard).join('')}</div>`;
 }
-function renderPCard(item){
-  const price=((item.price||item.content?.price||0)/100).toFixed(2);
-  const name=item.title||item.content?.title||'Producto';
-  const cond=item.condition||item.content?.condition||'';
-  const id=item.id||item.content?.id||'';
-  const badgeMap={nuevo:'sb-new',como_nuevo:'sb-good',buen_estado:'sb-avg',aceptable:'sb-low'};
-  const labelMap={nuevo:'Nuevo',como_nuevo:'Como nuevo',buen_estado:'Buen estado',aceptable:'Aceptable'};
-  const profit=Math.round(parseFloat(price)*0.35);
-  const dn=JSON.stringify({name,price,cond,id}).replace(/"/g,'&quot;');
-  return`<div class="pcard" onclick='openWpModal(${dn})'><div class="pcard-top"><div class="pcard-name">${esc(name)}</div><span class="sbadge ${badgeMap[cond]||'sb-avg'}">${labelMap[cond]||cond||'—'}</span></div><div class="pcard-prices"><div><div class="pprice-label">Precio</div><div class="pprice-val">${price} €</div></div><div><div class="pprice-label">Beneficio est.</div><div class="pprice-val profit">${profit>0?'+':''}${profit} €</div></div></div><div class="pcard-actions"><button class="act-ai" onclick="event.stopPropagation();launchAI('${esc(name)}','${price}')">🤖 Guía IA</button><button class="act-inv" onclick="event.stopPropagation();checkStock('${esc(name)}')">📦 Stock</button></div></div>`;
+
+function renderRealCard(item){
+  const price=(item.price||0).toFixed(2);
+  const name=item.title||'Producto';
+  const id=item.id||'';
+  const location=item.location||'';
+
+  // Detectar daños potenciales desde el título/descripción
+  const dmgInfo=detectDamages(name+' '+(item.description||''));
+  const profitRange=calcProfitRange(item.price||0, dmgInfo.severity);
+
+  const safeItem=JSON.stringify({name,price,id,location,description:item.description||'',damages:dmgInfo.list}).replace(/"/g,'&quot;');
+
+  return`<div class="pcard" onclick='openWpModal(${safeItem})'>
+    ${item.imageUrl?`<img src="${item.imageUrl}" alt="" style="width:100%;height:130px;object-fit:cover;border-radius:7px 7px 0 0;margin:-14px -14px 10px;width:calc(100% + 28px)">`:'' }
+    <div class="pcard-top">
+      <div class="pcard-name">${esc(name)}</div>
+    </div>
+    ${location?`<div style="font-size:10.5px;color:var(--t3);margin-bottom:7px">📍 ${esc(location)}</div>`:''}
+    ${dmgInfo.list.length?`<div style="margin-bottom:8px;display:flex;flex-wrap:wrap;gap:4px">${dmgInfo.list.slice(0,3).map(d=>`<span style="font-size:10px;padding:2px 6px;border-radius:4px;background:rgba(232,81,58,.1);color:var(--red);border:1px solid rgba(232,81,58,.2)">⚠ ${esc(d)}</span>`).join('')}</div>`:''}
+    <div class="pcard-prices">
+      <div><div class="pprice-label">Precio</div><div class="pprice-val">${price} €</div></div>
+      <div><div class="pprice-label">Beneficio est.</div>
+        <div class="pprice-val profit" title="Rango según daños detectados">${profitRange}</div>
+      </div>
+    </div>
+    <div class="pcard-actions">
+      <button class="act-ai" onclick="event.stopPropagation();launchAIFromItem(${safeItem})">🤖 Analizar IA</button>
+      <a href="https://es.wallapop.com/item/${id}" target="_blank" onclick="event.stopPropagation()" class="act-inv" style="display:flex;align-items:center;justify-content:center;text-decoration:none">🔗 Ver</a>
+    </div>
+  </div>`;
 }
+
+function detectDamages(text){
+  const t=text.toLowerCase();
+  const keywords=[
+    {k:['pantalla rota','pantalla crack','pantalla rayada','display roto'],label:'Pantalla rota',sev:3},
+    {k:['no carga','no enciende','no arranca','sin batería','batería mala'],label:'No funciona/carga',sev:4},
+    {k:['carcasa rota','carcasa rajada','carcasa golpe','golpeado','abollado'],label:'Carcasa dañada',sev:2},
+    {k:['teclado roto','tecla','botón roto'],label:'Teclado/botones',sev:2},
+    {k:['agua','mojado','humedad','oxidado'],label:'Daño por agua',sev:5},
+    {k:['camara rota','cámara falla','foto borrosa'],label:'Cámara dañada',sev:2},
+    {k:['altavoz','micrófono','sonido','audio'],label:'Audio dañado',sev:2},
+    {k:['conector','puerto','usb','jack'],label:'Puerto dañado',sev:2},
+    {k:['averiado','avería','falla','fallo','defecto','piezas','para piezas'],label:'Averiado',sev:4},
+    {k:['leer descripción','leer desc','ver fotos'],label:'Ver descripción',sev:1},
+  ];
+  const found=[];let totalSev=0;
+  for(const{k,label,sev} of keywords){
+    if(k.some(kw=>t.includes(kw))){found.push(label);totalSev+=sev;}
+  }
+  return{list:found,severity:Math.min(totalSev,10)};
+}
+
+function calcProfitRange(price, severity){
+  if(!price||price===0)return '—';
+  // Cuanto más daños, más riesgo pero también más margen potencial
+  const baseMargin=0.5; // 50% margen base en wallapop flipping
+  const repairCostFactor=severity*0.04; // más daños = más coste reparación
+  const minProfit=Math.round(price*(baseMargin-repairCostFactor-0.1));
+  const maxProfit=Math.round(price*(baseMargin+0.2));
+  const minPct=Math.round((baseMargin-repairCostFactor)*100-10);
+  const maxPct=Math.round((baseMargin+0.2)*100);
+  if(minProfit<=0)return`<span style="color:var(--red)">Riesgo alto</span>`;
+  return`+${minProfit}–${maxProfit} € <span style="font-size:10px;color:var(--t2)">(${minPct}–${maxPct}%)</span>`;
+}
+
+function launchAIFromItem(item){
+  // Prepoblamos el formulario de IA con todos los datos del item
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
+  document.getElementById('page-rl-ia').classList.add('on');
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
+  document.querySelectorAll('.tab.rl-tab')[1].classList.add('on');
+  document.getElementById('ai-prod').value=item.name;
+  document.getElementById('ai-price').value=item.price;
+  if(item.damages&&item.damages.length){
+    document.getElementById('ai-prob').value=`Posibles daños detectados: ${item.damages.join(', ')}. ${item.description?'Descripción: '+item.description.slice(0,200):''}`;
+  } else if(item.description){
+    document.getElementById('ai-prob').value=item.description.slice(0,300);
+  }
+  setTimeout(()=>startAI(),200);
+}
+
 function renderWallapopFallback(q,pmin,pmax,estado,orden){
-  let wp=new URLSearchParams({keywords:q,order_by:orden});
+  let wp=new URLSearchParams({keywords:q});
   if(pmin)wp.append('minPrice',pmin);if(pmax)wp.append('maxPrice',pmax);if(estado)wp.append('condition',estado);
-  document.getElementById('rl-results').innerHTML=`<div class="wp-result-panel"><p style="font-size:14px;font-weight:700;margin-bottom:6px">Abre la búsqueda directamente en Wallapop</p><p style="font-size:12.5px;color:var(--t2);margin-bottom:16px">La API pública de Wallapop requiere autenticación. Usa el enlace con tus filtros aplicados.</p><a href="https://es.wallapop.com/app/search?${wp}" target="_blank" class="btn btn-lime" style="display:inline-flex;align-items:center;gap:7px;text-decoration:none;margin-bottom:16px">🔍 Buscar "${esc(q)}" en Wallapop →</a><div style="padding-top:14px;border-top:1px solid var(--bd)"><p style="font-size:12px;color:var(--t3);margin-bottom:10px">O consulta el asistente IA para este producto</p><button class="btn btn-ghost" onclick="launchAI('${esc(q)}','')">🤖 Abrir guía de reparación para "${esc(q)}"</button></div></div>`;
+  document.getElementById('rl-results').innerHTML=`
+    <div class="wp-result-panel">
+      <p style="font-size:14px;font-weight:700;margin-bottom:6px">⚠️ API no configurada aún</p>
+      <p style="font-size:12.5px;color:var(--t2);margin-bottom:4px">Para búsqueda automática, despliega la API en Railway y actualiza <code style="background:var(--s3);padding:1px 5px;border-radius:3px;font-family:var(--mn);font-size:11px">API_URL</code> en el código.</p>
+      <p style="font-size:11.5px;color:var(--t3);margin-bottom:14px">Ver instrucciones en el README del repositorio wallapop-api.</p>
+      <a href="https://es.wallapop.com/app/search?${wp}" target="_blank" class="btn btn-lime" style="display:inline-flex;align-items:center;gap:7px;text-decoration:none;margin-bottom:14px">🔍 Buscar "${esc(q)}" en Wallapop →</a>
+      <div style="padding-top:12px;border-top:1px solid var(--bd)">
+        <p style="font-size:11.5px;color:var(--t3);margin-bottom:8px">O lanza el análisis IA directamente:</p>
+        <button class="btn btn-ghost" onclick="launchAI('${q.replace(/'/g,"\\'")}','')">🤖 Guía de reparación para "${esc(q)}"</button>
+      </div>
+    </div>`;
 }
+
 function clearRLFilters(){document.getElementById('rl-pmin').value='';document.getElementById('rl-pmax').value='';document.getElementById('rl-estado').value='';document.getElementById('rl-orden').value='newest';}
+
 function openWpModal(item){
   document.getElementById('modal-wp-title').textContent=item.name;
   const invItems=I.filter(r=>r.stockActual>0);
-  document.getElementById('modal-wp-body').innerHTML=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px"><div style="background:var(--s2);border-radius:8px;padding:12px"><div style="font-size:10px;color:var(--t3);margin-bottom:3px">Precio</div><div style="font-family:var(--mn);font-size:20px;font-weight:700">${item.price} €</div></div><div style="background:var(--s2);border-radius:8px;padding:12px"><div style="font-size:10px;color:var(--t3);margin-bottom:3px">Estado</div><div style="font-size:14px;font-weight:600">${item.cond||'N/A'}</div></div></div>${invItems.length?`<div style="margin-bottom:14px"><div style="font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Repuestos en tu inventario</div>${invItems.map(r=>`<div class="modal-inv-item"><span>${esc(r.nombre)}</span><div style="display:flex;gap:10px"><strong style="color:var(--grn)">${r.stockActual} uds</strong><strong style="color:var(--t2)">${r.precio.toFixed(2)} €</strong></div></div>`).join('')}</div>`:`<p style="font-size:12.5px;color:var(--t3);margin-bottom:14px">Sin repuestos en inventario.</p>`}<div style="display:flex;gap:8px"><button class="btn btn-lime" style="flex:1" onclick="closeM('modal-wp');launchAI('${item.name.replace(/'/g,"\\'")}','${item.price}')">🤖 Abrir en Asistente IA</button>${item.id?`<a href="https://es.wallapop.com/item/${item.id}" target="_blank" class="btn btn-ghost" style="text-decoration:none">Ver en Wallapop</a>`:''}</div>`;
+  const dmgHtml=item.damages&&item.damages.length?`
+    <div style="margin-bottom:12px">
+      <div style="font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">⚠️ Posibles daños detectados</div>
+      <div style="display:flex;flex-wrap:wrap;gap:4px">${item.damages.map(d=>`<span style="font-size:11px;padding:3px 8px;border-radius:5px;background:rgba(232,81,58,.12);color:var(--red);border:1px solid rgba(232,81,58,.25)">${esc(d)}</span>`).join('')}</div>
+    </div>`:'';
+  document.getElementById('modal-wp-body').innerHTML=`
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+      <div style="background:var(--s2);border-radius:8px;padding:11px"><div style="font-size:10px;color:var(--t3);margin-bottom:2px">Precio</div><div style="font-family:var(--mn);font-size:20px;font-weight:700">${item.price} €</div></div>
+      <div style="background:var(--s2);border-radius:8px;padding:11px"><div style="font-size:10px;color:var(--t3);margin-bottom:2px">Beneficio est.</div><div style="font-size:14px;font-weight:700;color:var(--grn)">${calcProfitRange(parseFloat(item.price)||0, (item.damages||[]).length*1.5)}</div></div>
+    </div>
+    ${dmgHtml}
+    ${item.description?`<div style="margin-bottom:12px"><div style="font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">Descripción</div><p style="font-size:12.5px;color:var(--t2);line-height:1.5">${esc(item.description.slice(0,300))}${item.description.length>300?'…':''}</p></div>`:''}
+    ${invItems.length?`<div style="margin-bottom:12px"><div style="font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Repuestos en tu inventario</div>${invItems.map(r=>`<div class="modal-inv-item"><span>${esc(r.nombre)}</span><div style="display:flex;gap:10px"><strong style="color:var(--grn)">${r.stockActual} uds</strong><strong style="color:var(--t2)">${r.precio.toFixed(2)} €</strong></div></div>`).join('')}</div>`:''}
+    <div style="display:flex;gap:7px">
+      <button class="btn btn-lime" style="flex:1" onclick="closeM('modal-wp');launchAIFromItem(${JSON.stringify(item).replace(/"/g,'&quot;')})">🤖 Analizar con IA</button>
+      ${item.id?`<a href="https://es.wallapop.com/item/${item.id}" target="_blank" class="btn btn-ghost" style="text-decoration:none">🔗 Ver en Wallapop</a>`:''}
+    </div>`;
   openM('modal-wp');
 }
+
 function checkStock(name){
   const kw=name.toLowerCase().split(' ').slice(0,2).join(' ');
   const found=[...I,...TC.map(t=>({nombre:t.nombre,stockActual:t.cantidad,precio:0}))].filter(r=>(r.nombre||'').toLowerCase().includes(kw.split(' ')[0]));
