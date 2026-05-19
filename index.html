@@ -1011,7 +1011,7 @@ function importExcel(input){
 // ══════════════════════════════════════════
 
 // ⚙️ CAMBIA ESTA URL por la de tu API en Railway
-const API_URL = 'https://wallapop-api-production.up.railway.app';
+const API_URL = 'https://TU-API.railway.app';
 
 let lastAnalyzed = {}; // cache de análisis IA por item id
 
@@ -1131,12 +1131,37 @@ function estimateRepairCost(damageLabels){
 function calcFullProfit(buyPrice, dmgInfo, repairCost){
   if(!buyPrice||buyPrice===0)return{profit:0,roi:0,estimatedSell:0,totalInvested:0};
   const severity=dmgInfo.severity||0;
-  const sellMultiplier=severity===0?2.2:severity<=3?1.9:severity<=6?1.6:1.4;
-  const estimatedSell=Math.round(buyPrice*sellMultiplier);
-  const totalInvested=buyPrice+repairCost;
-  const profit=Math.round(estimatedSell-totalInvested);
-  const roi=totalInvested>0?Math.round((profit/totalInvested)*100):0;
-  return{profit,roi,estimatedSell,totalInvested};
+
+  // Estrategia venta agresiva (cashflow rápido):
+  // Precio de venta = precio de compra + coste reparación + margen neto ajustado
+  // El objetivo es rotar rápido, no maximizar cada venta.
+  //
+  // Referencia real Wallapop segunda mano:
+  //   Sin daños  → vendes ~10-15% por encima de lo que compraste
+  //   Daños leves → compras barato, reparas, vendes a ~precio mercado -20% (para salir rápido)
+  //   Daños graves → más riesgo, más trabajo, margen algo mayor si sale bien
+
+  const totalInvested = buyPrice + repairCost;
+
+  let targetProfit;
+  if(severity === 0){
+    // Producto sin daños: margen pequeño, venta rápida
+    targetProfit = Math.round(buyPrice * 0.12);
+  } else if(severity <= 3){
+    // Daños leves (carcasa, batería): margen moderado
+    targetProfit = Math.round(totalInvested * 0.18);
+  } else if(severity <= 6){
+    // Daños medios (pantalla, puerto): más trabajo, margen algo mejor
+    targetProfit = Math.round(totalInvested * 0.22);
+  } else {
+    // Daños graves (agua, no enciende): riesgo alto, margen mayor si sale
+    targetProfit = Math.round(totalInvested * 0.28);
+  }
+
+  const estimatedSell = Math.round(totalInvested + targetProfit);
+  const profit = Math.round(estimatedSell - totalInvested);
+  const roi = totalInvested > 0 ? Math.round((profit / totalInvested) * 100) : 0;
+  return{profit, roi, estimatedSell, totalInvested};
 }
 
 async function enrichWithRealSellPrice(items){
