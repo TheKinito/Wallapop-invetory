@@ -285,6 +285,7 @@ tbody td{padding:8px 10px;vertical-align:middle;}
     <button class="tab" onclick="showPage('taller',this)">🔧 Taller <span class="bdg" id="bt">0</span></button>
     <button class="tab" onclick="showPage('pedidos',this)">🛒 Pedidos <span class="bdg" id="bp">0</span></button>
     <button class="tab" onclick="showPage('resumen',this)">📊 Resumen</button>
+    <button class="tab" onclick="showPage('reparaciones',this)">🛠 Reparaciones <span class="bdg" id="brep">0</span></button>
     <div class="header-divider"></div>
     <!-- RepairLab tabs -->
     <button class="tab rl-tab" onclick="showPage('rl-buscar',this)">🔍 Buscar</button>
@@ -427,6 +428,95 @@ tbody td{padding:8px 10px;vertical-align:middle;}
 </div>
 
 <!-- ══════════════ REPAIRLAB: BUSCAR ══════════════ -->
+<div id="page-reparaciones" class="page">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+    <div>
+      <h2 style="font-family:var(--hd);font-size:22px;font-weight:800;letter-spacing:-.5px">🛠 Reparaciones de clientes</h2>
+      <p style="font-size:12.5px;color:var(--t2);margin-top:3px">El cliente trae su aparato, tú lo reparas y cobras la mano de obra + piezas</p>
+    </div>
+    <button class="btn btn-acc" onclick="openNewRep()">✚ Nueva reparación</button>
+  </div>
+  <div class="stats" id="rep-stats"></div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin-top:4px">
+    <div>
+      <div style="display:flex;align-items:center;gap:7px;margin-bottom:10px">
+        <div style="width:10px;height:10px;border-radius:50%;background:var(--acc)"></div>
+        <span style="font-size:12px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.6px">Pendiente</span>
+        <span class="bdg" id="rep-cnt-pendiente" style="margin-left:auto">0</span>
+      </div>
+      <div id="rep-col-pendiente" style="display:flex;flex-direction:column;gap:8px"></div>
+    </div>
+    <div>
+      <div style="display:flex;align-items:center;gap:7px;margin-bottom:10px">
+        <div style="width:10px;height:10px;border-radius:50%;background:var(--blu)"></div>
+        <span style="font-size:12px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.6px">En proceso</span>
+        <span class="bdg" id="rep-cnt-en_proceso" style="margin-left:auto">0</span>
+      </div>
+      <div id="rep-col-en_proceso" style="display:flex;flex-direction:column;gap:8px"></div>
+    </div>
+    <div>
+      <div style="display:flex;align-items:center;gap:7px;margin-bottom:10px">
+        <div style="width:10px;height:10px;border-radius:50%;background:var(--grn)"></div>
+        <span style="font-size:12px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.6px">Completada</span>
+        <span class="bdg" id="rep-cnt-completada" style="margin-left:auto">0</span>
+      </div>
+      <div id="rep-col-completada" style="display:flex;flex-direction:column;gap:8px"></div>
+    </div>
+    <div>
+      <div style="display:flex;align-items:center;gap:7px;margin-bottom:10px">
+        <div style="width:10px;height:10px;border-radius:50%;background:var(--lime)"></div>
+        <span style="font-size:12px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.6px">Entregado</span>
+        <span class="bdg" id="rep-cnt-entregado" style="margin-left:auto">0</span>
+      </div>
+      <div id="rep-col-entregado" style="display:flex;flex-direction:column;gap:8px"></div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL NUEVA/EDITAR REPARACIÓN DE CLIENTE -->
+<div class="overlay" id="modal-rep">
+  <div class="modal">
+    <div class="mh"><span class="mt" id="modal-rep-title">✚ Nueva reparación</span><button class="xbtn" onclick="closeM('modal-rep');clearRepF()">×</button></div>
+    <div class="mb">
+      <input type="hidden" id="rep-edit-id">
+      <div class="fg">
+        <div class="f w2"><label>Aparato</label><input type="text" id="rep-nombre" placeholder="Ej: Nintendo Switch, iPhone 13, PS4…"></div>
+        <div class="f w2"><label>Cliente (opcional)</label><input type="text" id="rep-cliente" placeholder="Nombre o teléfono del cliente"></div>
+        <div class="f full"><label>Problema / Síntoma</label><textarea id="rep-problema" placeholder="Describe el fallo: no enciende, pantalla rota, joystick drift…" style="min-height:55px"></textarea></div>
+        <div class="f full">
+          <label>Componentes usados del inventario</label>
+          <div class="rep-list" id="rep-comp-list"></div>
+          <div class="rep-add-row">
+            <select id="rep-comp-sel"><option value="">— Seleccionar componente —</option></select>
+            <input type="number" id="rep-comp-qty" min="1" step="1" value="1" placeholder="Cant.">
+            <button class="btn btn-grn btn-sm" onclick="addRepComp()">＋</button>
+          </div>
+        </div>
+        <div class="f"><label>Coste componentes</label>
+          <div class="calc-row"><span class="lbl">Suma automática</span><span class="res" id="rep-coste-total">0.00 €</span></div>
+        </div>
+        <div class="f"><label>Precio cobrado al cliente (€)</label><input type="number" id="rep-cobrado" min="0" step="0.01" placeholder="0.00" oninput="calcRepBeneficio()"></div>
+        <div class="f"><label>Beneficio neto</label>
+          <div class="calc-row"><span class="lbl">Cobrado − Coste piezas</span><span class="res" id="rep-beneficio">—</span></div>
+        </div>
+        <div class="f"><label>Estado</label>
+          <select id="rep-estado">
+            <option value="pendiente">⏳ Pendiente</option>
+            <option value="en_proceso">🔧 En proceso</option>
+            <option value="completada">✅ Completada</option>
+            <option value="entregado">📦 Entregado</option>
+          </select>
+        </div>
+        <div class="f full"><label>Notas internas</label><textarea id="rep-notas" placeholder="Observaciones, diagnóstico, piezas pedidas…" style="min-height:50px"></textarea></div>
+      </div>
+    </div>
+    <div class="mf">
+      <button class="btn btn-ghost" onclick="closeM('modal-rep');clearRepF()">Cancelar</button>
+      <button class="btn btn-acc" id="btn-save-rep" onclick="saveRep()">💾 Guardar</button>
+    </div>
+  </div>
+</div>
+
 <div id="page-rl-buscar" class="page">
   <div class="rl-hero">
     <h2>Buscar en <span>Wallapop</span></h2>
@@ -642,18 +732,19 @@ function setSS(state,text){document.getElementById('sync-dot').className='sync-d
 async function init(){
   setLM('Cargando datos…');
   try{
-    const[ventas,inventario,taller,pedidos]=await Promise.all([sbGet('ventas'),sbGet('inventario'),sbGet('inventario_componentes'),sbGet('lista_compra')]);
+    const[ventas,inventario,taller,pedidos,reparaciones]=await Promise.all([sbGet('ventas'),sbGet('inventario'),sbGet('inventario_componentes'),sbGet('lista_compra'),sbGet('reparaciones')]);
     V=ventas.map(rowToVenta);
     I=inventario.map(rowToInv);
     TC=taller.map(r=>({id:r.id,nombre:r.nombre,cantidad:r.cantidad||0,umbral:r.umbral_minimo||0}));
     PD=pedidos.map(r=>({id:r.id,nombre:r.nombre,qty:r.cantidad_pedida||1,compId:r.componente_id||null,fecha:r.created_at}));
+    REP=reparaciones.map(r=>({id:r.id,nombre:r.nombre,cliente:r.cliente||'',problema:r.problema||'',componentes:typeof r.componentes==='string'?JSON.parse(r.componentes||'[]'):r.componentes||[],costeComponentes:r.coste_componentes||0,precioCobrado:r.precio_cobrado||0,beneficio:r.beneficio||0,estado:r.estado||'pendiente',notas:r.notas||'',fecha:r.fecha||''}));
     setSS('ok','Sincronizado');
     renderAiInvTags();
   }catch(e){
     console.error(e);setSS('err','Error de conexión');toast('Error conectando con Supabase','err');
   }
   document.getElementById('loading-screen').style.display='none';
-  renderV();renderI();refreshSels();renderTaller();renderPedidos();refreshCompSel();
+  renderV();renderI();refreshSels();renderTaller();renderPedidos();refreshCompSel();renderReparaciones();refreshRepCompSel();
 }
 function setLM(m){document.getElementById('loading-msg').textContent=m;}
 
@@ -670,6 +761,7 @@ function showPage(n,btn){
   if(n==='inventario')renderI();
   if(n==='taller')renderTaller();
   if(n==='pedidos'){renderPedidos();refreshCompSel();}
+  if(n==='reparaciones'){renderReparaciones();refreshRepCompSel();}
 }
 
 // ══════════════════════════════════════════
@@ -864,8 +956,12 @@ function refreshSels(){
 function renderR(){
   const sold=V.filter(v=>v.estado==='vendido'),enStock=V.filter(v=>v.estado==='en_stock'),rep=V.filter(v=>v.estado==='reparando');
   const ti=V.reduce((a,v)=>a+v.compra+v.repCoste,0),tv=sold.reduce((a,v)=>a+v.venta,0),tb=sold.reduce((a,v)=>a+v.beneficio,0),trc=V.reduce((a,v)=>a+v.repCoste,0);
+  // Incluir reparaciones completadas en el resumen
+  const repVendidas=REP.filter(r=>r.estado==='entregado');
+  const tbRep=repVendidas.reduce((a,r)=>a+(r.beneficio||0),0);
+  const tbTotal=tb+tbRep;
   const roi=ti>0?((tb/ti)*100).toFixed(1):'0.0',avg=sold.length>0?(tb/sold.length).toFixed(2):'0.00',mg=sold.length>0?(sold.reduce((a,v)=>a+(v.venta>0?v.beneficio/v.venta*100:0),0)/sold.length).toFixed(1):'0.0';
-  document.getElementById('rs').innerHTML=`<div class="sc o"><div class="sc-lbl">Capital invertido</div><div class="sc-val">${fmtN(ti)}</div><div class="sc-sub">${V.length} operaciones</div></div><div class="sc b"><div class="sc-lbl">Facturado</div><div class="sc-val">${fmtN(tv)}</div><div class="sc-sub">${sold.length} vendidos</div></div><div class="sc ${tb>=0?'g':'r'}"><div class="sc-lbl">Beneficio total</div><div class="sc-val">${fmt(tb)}</div><div class="sc-sub">ROI ${roi}%</div></div><div class="sc g"><div class="sc-lbl">Beneficio medio</div><div class="sc-val">${parseFloat(avg)>=0?'+':''}${avg} €</div><div class="sc-sub">por venta</div></div><div class="sc r"><div class="sc-lbl">Coste repuestos</div><div class="sc-val">${fmtN(trc)}</div><div class="sc-sub">${ti>0?((trc/ti)*100).toFixed(1):0}% inversión</div></div>`;
+  document.getElementById('rs').innerHTML=`<div class="sc o"><div class="sc-lbl">Capital invertido</div><div class="sc-val">${fmtN(ti)}</div><div class="sc-sub">${V.length} operaciones</div></div><div class="sc b"><div class="sc-lbl">Facturado</div><div class="sc-val">${fmtN(tv)}</div><div class="sc-sub">${sold.length} vendidos</div></div><div class="sc ${tbTotal>=0?'g':'r'}"><div class="sc-lbl">Beneficio total</div><div class="sc-val">${fmt(tbTotal)}</div><div class="sc-sub">ventas + reparaciones</div></div><div class="sc g"><div class="sc-lbl">Benef. reparaciones</div><div class="sc-val">${fmt(tbRep)}</div><div class="sc-sub">${repVendidas.length} reparados</div></div><div class="sc r"><div class="sc-lbl">Coste repuestos</div><div class="sc-val">${fmtN(trc)}</div><div class="sc-sub">${ti>0?((trc/ti)*100).toFixed(1):0}% inversión</div></div>`;
   const top=[...sold].sort((a,b)=>b.beneficio-a.beneficio).slice(0,5),mx=top[0]?.beneficio||1,rc=['gold','silver','bronze'];
   document.getElementById('rtop').innerHTML=!top.length?'<p style="color:var(--t3);font-size:13px">No hay productos vendidos aún.</p>':top.map((v,i)=>`<div style="display:flex;align-items:center;gap:9px;margin-bottom:12px;"><span class="rn ${rc[i]||''}">${i+1}</span><div style="flex:1;min-width:0;"><div style="font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(v.nombre)}</div><div class="pw" style="margin-top:4px;"><div class="pb" style="width:${Math.max(4,v.beneficio/mx*100).toFixed(0)}%;background:var(--grn)"></div></div></div><span style="font-family:var(--mn);font-size:12.5px;color:var(--grn);white-space:nowrap">${fmt(v.beneficio)}</span></div>`).join('');
   const tot=V.length||1;
@@ -1389,6 +1485,198 @@ async function callClaude(userMsg){
 }
 
 // ══════════════════════════════════════════
+// REPARACIONES DE CLIENTES
+// ══════════════════════════════════════════
+let REP = [];
+const pendingRepComps = [];
+
+function openNewRep(){
+  clearRepF();
+  refreshRepCompSel();
+  openM('modal-rep');
+}
+
+function repCompCostTotal(){
+  return pendingRepComps.reduce((s,r)=>{
+    const inv=I.find(x=>x.id===r.id)||TC.find(x=>x.id===r.id);
+    return s+(inv?((inv.precio||0)*r.qty):0);
+  },0);
+}
+
+function renderRepCompList(){
+  const list=document.getElementById('rep-comp-list');if(!list)return;
+  list.innerHTML=pendingRepComps.map((r,i)=>{
+    const inv=I.find(x=>x.id===r.id)||TC.find(x=>x.id===r.id);
+    const nombre=inv?inv.nombre:'?';
+    const coste=inv?((inv.precio||0)*r.qty).toFixed(2):'0.00';
+    return`<div class="rep-row"><span style="font-size:12.5px;font-weight:600">${esc(nombre)}</span><span style="font-family:var(--mn);font-size:11px;color:var(--t2)">×${r.qty}</span><div style="display:flex;align-items:center;gap:5px"><span class="rep-precio">${coste} €</span><button class="del-rep" onclick="removeRepComp(${i})">✕</button></div></div>`;
+  }).join('');
+  const total=repCompCostTotal();
+  const el=document.getElementById('rep-coste-total');if(el)el.textContent=total.toFixed(2)+' €';
+  calcRepBeneficio();
+}
+
+function removeRepComp(idx){pendingRepComps.splice(idx,1);renderRepCompList();}
+
+function addRepComp(){
+  const sel=document.getElementById('rep-comp-sel');
+  const qty=parseInt(document.getElementById('rep-comp-qty').value)||1;
+  const id=sel.value;
+  if(!id){toast('Selecciona un componente','err');return;}
+  const inv=I.find(x=>x.id===id)||TC.find(x=>x.id===id);
+  if(!inv){toast('Componente no encontrado','err');return;}
+  pendingRepComps.push({id,qty});
+  sel.value='';document.getElementById('rep-comp-qty').value=1;
+  renderRepCompList();
+}
+
+function calcRepBeneficio(){
+  const cobrado=parseFloat(document.getElementById('rep-cobrado')?.value)||0;
+  const coste=repCompCostTotal();
+  const b=cobrado-coste;
+  const el=document.getElementById('rep-beneficio');
+  if(el){el.textContent=cobrado>0?fmt(b):'—';el.style.color=b>0?'var(--grn)':b<0?'var(--red)':'var(--t2)';}
+}
+
+function refreshRepCompSel(){
+  const sel=document.getElementById('rep-comp-sel');if(!sel)return;
+  sel.innerHTML='<option value="">— Seleccionar componente —</option>';
+  I.filter(r=>r.stockActual>0).forEach(r=>{const o=document.createElement('option');o.value=r.id;o.textContent=`${r.nombre} · ${r.precio.toFixed(2)}€ (stock: ${r.stockActual})`;sel.appendChild(o);});
+  TC.filter(t=>t.cantidad>0).forEach(t=>{const o=document.createElement('option');o.value=t.id;o.textContent=`${t.nombre} · taller (${t.cantidad} uds)`;sel.appendChild(o);});
+}
+
+function clearRepF(){
+  ['rep-nombre','rep-cliente','rep-problema','rep-cobrado','rep-notas'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  const est=document.getElementById('rep-estado');if(est)est.value='pendiente';
+  document.getElementById('rep-edit-id').value='';
+  document.getElementById('modal-rep-title').textContent='✚ Nueva reparación';
+  pendingRepComps.length=0;renderRepCompList();
+}
+
+async function saveRep(){
+  const nombre=document.getElementById('rep-nombre').value.trim();
+  if(!nombre){toast('Escribe el nombre del aparato','err');return;}
+  const cliente=document.getElementById('rep-cliente').value.trim();
+  const problema=document.getElementById('rep-problema').value.trim();
+  const cobrado=parseFloat(document.getElementById('rep-cobrado').value)||0;
+  const estado=document.getElementById('rep-estado').value;
+  const notas=document.getElementById('rep-notas').value.trim();
+  const componentes=[...pendingRepComps];
+  const costeComponentes=repCompCostTotal();
+  const beneficio=cobrado-costeComponentes;
+  const editId=document.getElementById('rep-edit-id').value;
+
+  setBusy('btn-save-rep',true);setSS('loading','Guardando…');
+  try{
+    const row={nombre,cliente,problema,componentes:JSON.stringify(componentes),coste_componentes:costeComponentes,precio_cobrado:cobrado,beneficio,estado,notas,fecha:new Date().toLocaleDateString('es-ES')};
+    if(editId){
+      await sbUpdate('reparaciones',editId,row);
+      const idx=REP.findIndex(r=>r.id===editId);
+      if(idx>-1)REP[idx]={...REP[idx],nombre,cliente,problema,componentes,costeComponentes,precioCobrado:cobrado,beneficio,estado,notas};
+      toast('Reparación actualizada ✓','ok');
+    } else {
+      const id=uid();
+      await sbInsert('reparaciones',{id,...row});
+      REP.push({id,nombre,cliente,problema,componentes,costeComponentes,precioCobrado:cobrado,beneficio,estado,notas,fecha:new Date().toLocaleDateString('es-ES')});
+      toast('Reparación añadida ✓','ok');
+    }
+    setSS('ok','Sincronizado');closeM('modal-rep');clearRepF();renderReparaciones();
+    if(document.getElementById('page-resumen').classList.contains('on'))renderR();
+  }catch(e){setSS('err','Error');toast('Error: '+e.message,'err');}
+  setBusy('btn-save-rep',false);
+}
+
+async function cambiarEstadoRep(id,nuevoEstado){
+  setSS('loading','Guardando…');
+  try{
+    await sbUpdate('reparaciones',id,{estado:nuevoEstado});
+    const r=REP.find(x=>x.id===id);if(r)r.estado=nuevoEstado;
+    setSS('ok','Sincronizado');renderReparaciones();toast('Estado actualizado ✓','ok');
+  }catch(e){setSS('err','Error');toast('Error: '+e.message,'err');}
+}
+
+function editRep(id){
+  const r=REP.find(x=>x.id===id);if(!r)return;
+  document.getElementById('rep-edit-id').value=id;
+  document.getElementById('rep-nombre').value=r.nombre;
+  document.getElementById('rep-cliente').value=r.cliente||'';
+  document.getElementById('rep-problema').value=r.problema||'';
+  document.getElementById('rep-cobrado').value=r.precioCobrado||0;
+  document.getElementById('rep-estado').value=r.estado;
+  document.getElementById('rep-notas').value=r.notas||'';
+  document.getElementById('modal-rep-title').textContent='✏️ Editar reparación';
+  pendingRepComps.length=0;(r.componentes||[]).forEach(c=>pendingRepComps.push({...c}));
+  refreshRepCompSel();renderRepCompList();
+  openM('modal-rep');
+}
+
+async function delRep(id){
+  if(!confirm('¿Eliminar esta reparación?'))return;
+  setSS('loading','Guardando…');
+  try{
+    await sbDelete('reparaciones',id);REP=REP.filter(x=>x.id!==id);
+    setSS('ok','Sincronizado');renderReparaciones();toast('Eliminada','ok');
+  }catch(e){setSS('err','Error');toast('Error: '+e.message,'err');}
+}
+
+function renderRepCard(r){
+  const comps=r.componentes||[];
+  const compChips=comps.map(c=>{
+    const inv=I.find(x=>x.id===c.id)||TC.find(x=>x.id===c.id);
+    return`<span style="font-size:10px;padding:1px 6px;border-radius:4px;background:rgba(240,165,0,.1);color:var(--acc);border:1px solid rgba(240,165,0,.2)">${esc(inv?inv.nombre:'?')}${c.qty>1?` ×${c.qty}`:''}</span>`;
+  }).join('');
+  const b=r.beneficio||0;
+  const bColor=b>0?'var(--grn)':b<0?'var(--red)':'var(--t2)';
+  const nextState={pendiente:'en_proceso',en_proceso:'completada',completada:'entregado'};
+  const nextLabel={pendiente:'▶ Iniciar',en_proceso:'✅ Completar',completada:'📦 Entregar'};
+  return`<div style="background:var(--s1);border:1px solid var(--bd);border-radius:var(--r);padding:12px 13px;">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:5px">
+      <div style="flex:1;padding-right:8px">
+        <div style="font-size:13px;font-weight:700;line-height:1.3">${esc(r.nombre)}</div>
+        ${r.cliente?`<div style="font-size:11px;color:var(--acc);margin-top:2px">👤 ${esc(r.cliente)}</div>`:''}
+      </div>
+      <div style="display:flex;gap:4px;flex-shrink:0">
+        <button class="btn btn-ghost btn-sm btn-ico" onclick="editRep('${r.id}')">✏️</button>
+        <button class="btn btn-red btn-sm btn-ico" onclick="delRep('${r.id}')">🗑</button>
+      </div>
+    </div>
+    ${r.problema?`<div style="font-size:11.5px;color:var(--t2);margin-bottom:8px;padding:5px 8px;background:var(--s2);border-radius:6px">${esc(r.problema)}</div>`:''}
+    ${r.fecha?`<div style="font-size:10px;color:var(--t3);margin-bottom:7px">📅 ${r.fecha}</div>`:''}
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px;font-size:11px;text-align:center">
+      <div><div style="color:var(--t3);margin-bottom:1px">Coste piezas</div><div style="font-family:var(--mn);font-weight:700;color:var(--red)">${(r.costeComponentes||0).toFixed(2)}€</div></div>
+      <div><div style="color:var(--t3);margin-bottom:1px">Cobrado</div><div style="font-family:var(--mn);font-weight:700;color:var(--blu)">${(r.precioCobrado||0).toFixed(2)}€</div></div>
+    </div>
+    ${compChips?`<div style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:8px">${compChips}</div>`:''}
+    <div style="display:flex;justify-content:space-between;align-items:center;padding-top:7px;border-top:1px solid var(--bd)">
+      <span style="font-family:var(--mn);font-size:13px;font-weight:700;color:${bColor}">${b>=0?'+':''}${b.toFixed(2)} €</span>
+      ${nextState[r.estado]?`<button class="btn btn-ghost btn-sm" onclick="cambiarEstadoRep('${r.id}','${nextState[r.estado]}')">${nextLabel[r.estado]}</button>`:'<span style="font-size:10.5px;color:var(--lime);font-weight:700">✓ Entregado</span>'}
+    </div>
+    ${r.notas?`<div style="font-size:11px;color:var(--t2);margin-top:6px;padding-top:6px;border-top:1px solid var(--bd)">${esc(r.notas)}</div>`:''}
+  </div>`;
+}
+
+function renderReparaciones(){
+  const estados=['pendiente','en_proceso','completada','entregado'];
+  document.getElementById('brep').textContent=REP.length;
+  const entregados=REP.filter(r=>r.estado==='entregado');
+  const enCurso=REP.filter(r=>r.estado==='pendiente'||r.estado==='en_proceso');
+  const totalBeneficio=entregados.reduce((s,r)=>s+(r.beneficio||0),0);
+  const totalCoste=REP.reduce((s,r)=>s+(r.costeComponentes||0),0);
+  document.getElementById('rep-stats').innerHTML=`
+    <div class="sc o"><div class="sc-lbl">Total reparaciones</div><div class="sc-val">${REP.length}</div><div class="sc-sub">${enCurso.length} en curso</div></div>
+    <div class="sc b"><div class="sc-lbl">Pendientes</div><div class="sc-val">${REP.filter(r=>r.estado==='pendiente').length}</div><div class="sc-sub">sin empezar</div></div>
+    <div class="sc ${totalBeneficio>=0?'g':'r'}"><div class="sc-lbl">Beneficio entregados</div><div class="sc-val">${fmt(totalBeneficio)}</div><div class="sc-sub">${entregados.length} entregados</div></div>
+    <div class="sc r"><div class="sc-lbl">Coste en piezas</div><div class="sc-val">${fmtN(totalCoste)}</div><div class="sc-sub">total gastado</div></div>`;
+  estados.forEach(estado=>{
+    const col=document.getElementById('rep-col-'+estado);
+    const cnt=document.getElementById('rep-cnt-'+estado);
+    const items=REP.filter(r=>r.estado===estado);
+    if(cnt)cnt.textContent=items.length;
+    if(col)col.innerHTML=items.length?items.map(renderRepCard).join(''):`<div style="border:1px dashed var(--bd);border-radius:var(--r);padding:20px;text-align:center;font-size:12px;color:var(--t3)">Sin artículos</div>`;
+  });
+}
+
+// ══════════════════════════════════════════
 // UI HELPERS
 // ══════════════════════════════════════════
 function openM(id){document.getElementById(id).classList.add('on');}
@@ -1405,6 +1693,7 @@ window.onclick=e=>{
   if(e.target===document.getElementById('mv'))closeM('mv');
   if(e.target===document.getElementById('mi'))closeM('mi');
   if(e.target===document.getElementById('modal-completar'))closeM('modal-completar');
+  if(e.target===document.getElementById('modal-rep')){closeM('modal-rep');clearRepF();}
 };
 
 // INIT
